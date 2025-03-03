@@ -11,7 +11,7 @@
  * @param msg Mensagem detalhada descrevendo o erro.
  */
 SyntaxError::SyntaxError(int line, const std::string& msg)
-    : std::runtime_error("Erro de Sintaxe (linha " + std::to_string(line) + "): " + msg) {}
+    : std::runtime_error("linha " + std::to_string(line) + ": " + msg) {}
 
 /**
  * @brief Construtor para exceção de erro semântico.
