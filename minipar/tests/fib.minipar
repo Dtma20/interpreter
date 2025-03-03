@@ -1,0 +1,13 @@
+n: number = 6
+a: number = 0
+b: number = 1
+i: number = 0
+
+while (i < n) {
+    c: number = a + b
+    a = b
+    b = c
+    i = i + 1
+}
+
+print(c)

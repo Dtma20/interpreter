@@ -1,0 +1,7 @@
+func test_for() -> number {
+  for (i: number = 0; i < 5; i = i + 1) {
+    result = result + i
+  }
+  print(result)
+  return result
+}
