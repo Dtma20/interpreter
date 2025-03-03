@@ -70,6 +70,7 @@ const std::vector<std::pair<std::string, std::string>> TOKEN_PATTERNS = {
     {"NEWLINE", "\n"},
     {"WHITESPACE", "\\s+"},
     {"OTHER", "."},
+    {"FOR", "for"},
 };
 
 /**
@@ -80,7 +81,7 @@ const std::vector<std::pair<std::string, std::string>> TOKEN_PATTERNS = {
  */
 const std::unordered_set<std::string> STATEMENT_TOKENS = {
     "ID", "FUNC", "IF", "ELSE", "WHILE", "RETURN", "BREAK", "CONTINUE",
-    "SEQ", "PAR", "C_CHANNEL", "S_CHANNEL"
+    "SEQ", "PAR", "C_CHANNEL", "S_CHANNEL", "FOR"
 };
 
 /**
