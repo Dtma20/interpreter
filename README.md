@@ -60,25 +60,25 @@ Para compilar e executar programas escritos em Minipar, siga os passos abaixo:
 2. **Compilação:**  
    No diretório `build/`, utilize o *Makefile*:
    - **Compilação padrão:**  
-     ```bash
+     ```go
      make run
      ```  
      Esse comando gera o executável `programa` usando o seguinte comando de compilação:
-     ```bash
+     ```go
      g++ -g -o programa ../main.cpp ../src/lexer.cpp ../src/parser.cpp ../src/semantic.cpp ../src/token.cpp ../src/error.cpp ../src/ast.cpp ../src/interpreter.cpp -std=c++17 -fPIC
      ```
    - **Modo de Depuração:**  
-     ```bash
+     ```go
      make debug
      ```  
      Essa opção adiciona a flag `-DDEBUG_MODE` para ativar logs de depuração:
-     ```bash
+     ```go
      g++ -DDEBUG_MODE -g -o programa ../main.cpp ../src/lexer.cpp ../src/parser.cpp ../src/semantic.cpp ../src/token.cpp ../src/error.cpp ../src/ast.cpp ../src/interpreter.cpp -std=c++17 -fPIC
      ```
 
 3. **Execução:**  
    Após a compilação, execute o interpretador passando um arquivo fonte como argumento, por exemplo:
-   ```bash
+   ```go
    ./build/programa exemplos/fib.minipar
    ```
    O interpretador processará o código, exibindo a saída ou mensagens de erro no console.
