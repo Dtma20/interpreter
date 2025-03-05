@@ -517,3 +517,16 @@ std::optional<std::string> SemanticAnalyzer::visit_Call(const Call* node) const 
     }
     return function->getReturnType();
 }
+
+std::optional<std::string> SemanticAnalyzer::visit_Array(const Array* node) const {
+    std::string element_type = "";
+    for (const auto& element : node->getElements()) {
+        std::string current_type = evaluate(element.get());
+        if (element_type.empty()) {
+            element_type = current_type;
+        } else if (current_type != element_type) {
+            throw SemanticError("Todos os elementos do array devem ser do mesmo tipo");
+        }
+    }
+    return "ARRAY";
+}

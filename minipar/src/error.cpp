@@ -10,7 +10,7 @@
  * @param line Número da linha em que o erro de sintaxe foi detectado.
  * @param msg Mensagem detalhada descrevendo o erro.
  */
-SyntaxError::SyntaxError(int line, const std::string& msg)
+SyntaxError::SyntaxError(int line, const std::string &msg)
     : std::runtime_error("linha " + std::to_string(line) + ": " + msg) {}
 
 /**
@@ -21,7 +21,7 @@ SyntaxError::SyntaxError(int line, const std::string& msg)
  *
  * @param msg Mensagem detalhada descrevendo o erro semântico.
  */
-SemanticError::SemanticError(const std::string& msg)
+SemanticError::SemanticError(const std::string &msg)
     : std::runtime_error("Erro de Semântica: " + msg) {}
 
 /**
@@ -32,5 +32,5 @@ SemanticError::SemanticError(const std::string& msg)
  *
  * @param msg Mensagem detalhada descrevendo o erro em tempo de execução.
  */
-RunTimeError::RunTimeError(const std::string& msg)
+RunTimeError::RunTimeError(const std::string &msg)
     : std::runtime_error("Erro em Tempo de Execução: " + msg) {}

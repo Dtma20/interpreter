@@ -69,8 +69,8 @@ const std::vector<std::pair<std::string, std::string>> TOKEN_PATTERNS = {
     {"RBRACE", "\\}"},
     {"NEWLINE", "\n"},
     {"WHITESPACE", "\\s+"},
-    {"OTHER", "."},
     {"FOR", "for"},
+    {"OTHER", "."},
 };
 
 /**

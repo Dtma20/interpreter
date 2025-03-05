@@ -1,10 +1,3 @@
-/* SERVER PARA UMA CALCULADORA SIMPLES */
-
-/* Função que recebe a mensagem do cliente
- * e realiza a tradução e execução da mesma
- * em uma sequência de operações aritméticas
- * simples, sem ordem de precedência
- */
 func calc(message: string) -> string {
   index: number = 0
   size: number = len(message)
@@ -36,7 +29,7 @@ func calc(message: string) -> string {
       index = index + 1
     }
   }
-  return result 
+  return result
 }
 
 description: string = "CALCULADORA SIMPLES"

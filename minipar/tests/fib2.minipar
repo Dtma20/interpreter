@@ -1,10 +1,14 @@
-func test_for() -> number {
-  result: number = 0
-  for (i: number = 0; i < 5; i = i + 1) {
-    result = result + i
+func test_for(n: number) -> number {
+  a: number = 0
+  b: number = 1
+  c: number = 0
+  for (i: number = 0; i < n; i = i + 1) {
+    c: number = a + b
+    a = b
+    b = c
   }
-  return result
+  return c
 }
 
-a: number = test_for()
+a: number = test_for(20)
 print(a)

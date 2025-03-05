@@ -15,7 +15,8 @@
  *
  * Define os métodos básicos que qualquer implementação de parser deve possuir.
  */
-class IParser {
+class IParser
+{
 public:
     virtual ~IParser() = default;
 
@@ -25,7 +26,7 @@ public:
      * @param tag A tag do token esperado.
      * @return true se o token corresponder, false caso contrário.
      */
-    virtual bool match(const std::string& tag) = 0;
+    virtual bool match(const std::string &tag) = 0;
 
     /**
      * @brief Inicia o processo de análise sintática e retorna o módulo principal.
@@ -40,7 +41,8 @@ public:
  *
  * Transforma a sequência de tokens gerada pelo lexer em uma AST (Abstract Syntax Tree).
  */
-class Parser : public IParser {
+class Parser : public IParser
+{
 public:
     /**
      * @brief Construtor da classe Parser.
@@ -55,7 +57,7 @@ public:
      * @param tag A tag do token esperado.
      * @return true se o token corresponder, false caso contrário.
      */
-    bool match(const std::string& tag) override;
+    bool match(const std::string &tag) override;
 
     /**
      * @brief Inicia o processo de análise sintática e retorna o módulo principal.
@@ -98,7 +100,7 @@ private:
      * @param params Parâmetros locais do bloco, se aplicável.
      * @return Um vetor contendo os statements do bloco.
      */
-    Body block(const Parameters& params = {});
+    Body block(const Parameters &params = {});
 
     /**
      * @brief Analisa uma lista de parâmetros de uma função.
@@ -202,7 +204,7 @@ private:
      * @param id_type O tipo da variável.
      * @return O nome da variável.
      */
-    std::string var(const std::string& id_type);
+    std::string var(const std::string &id_type);
 };
 
 #endif // PARSER_HPP

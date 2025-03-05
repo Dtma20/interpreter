@@ -11,7 +11,8 @@
  *
  * Um símbolo contém informações sobre o nome da variável e seu tipo.
  */
-struct Symbol {
+struct Symbol
+{
     std::string var;  ///< Nome da variável.
     std::string type; ///< Tipo da variável.
 
@@ -20,7 +21,7 @@ struct Symbol {
      * @param var Nome da variável.
      * @param type Tipo da variável.
      */
-    Symbol(const std::string& var, const std::string& type)
+    Symbol(const std::string &var, const std::string &type)
         : var(var), type(type) {}
 };
 
@@ -29,7 +30,8 @@ struct Symbol {
  *
  * Essa estrutura permite armazenar e recuperar símbolos em diferentes escopos.
  */
-class SymTable {
+class SymTable
+{
 public:
     std::unordered_map<std::string, Symbol> table; ///< Mapeamento de identificadores para símbolos.
     std::shared_ptr<SymTable> prev;                ///< Ponteiro para a tabela do escopo anterior.
@@ -46,7 +48,8 @@ public:
      * @param symbol Objeto Symbol contendo informações da variável.
      * @return true se a inserção foi bem-sucedida, false se a chave já existia.
      */
-    bool insert(const std::string& key, const Symbol& symbol) {
+    bool insert(const std::string &key, const Symbol &symbol)
+    {
         return table.emplace(key, symbol).second;
     }
 
@@ -55,11 +58,14 @@ public:
      * @param key Nome do símbolo a ser buscado.
      * @return Ponteiro para o Symbol encontrado ou nullptr se não existir.
      */
-    Symbol* find(const std::string& key) {
+    Symbol *find(const std::string &key)
+    {
         std::shared_ptr<SymTable> current = std::shared_ptr<SymTable>(this);
-        while (current != nullptr) {
+        while (current != nullptr)
+        {
             auto it = current->table.find(key);
-            if (it != current->table.end()) {
+            if (it != current->table.end())
+            {
                 return &it->second;
             }
             current = current->prev;
@@ -73,7 +79,8 @@ public:
  *
  * Permite associar identificadores a valores e recuperar valores armazenados.
  */
-class VarTable {
+class VarTable
+{
 public:
     std::unordered_map<std::string, std::any> table; ///< Mapeamento de identificadores para valores.
     std::shared_ptr<VarTable> prev;                  ///< Ponteiro para a tabela do escopo anterior.
@@ -89,10 +96,13 @@ public:
      * @param key Nome da variável a ser buscada.
      * @return Ponteiro para a tabela onde a variável foi encontrada ou nullptr se não existir.
      */
-    std::shared_ptr<VarTable> find(const std::string& key) {
+    std::shared_ptr<VarTable> find(const std::string &key)
+    {
         std::shared_ptr<VarTable> current = std::shared_ptr<VarTable>(this);
-        while (current != nullptr) {
-            if (current->table.find(key) != current->table.end()) {
+        while (current != nullptr)
+        {
+            if (current->table.find(key) != current->table.end())
+            {
                 return current;
             }
             current = current->prev;

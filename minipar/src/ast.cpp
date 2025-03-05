@@ -6,14 +6,15 @@
  * A classe Expression é a classe base para todas as expressões, contendo
  * o tipo da expressão e o token associado.
  */
-Expression::Expression(const std::string& type, const Token& token)
+Expression::Expression(const std::string &type, const Token &token)
     : type(type), token(token) {}
 
 /**
  * @brief Obtém o tipo da expressão.
  * @return Uma string representando o tipo da expressão.
  */
-std::string Expression::getType() const {
+std::string Expression::getType() const
+{
     return type;
 }
 
@@ -21,7 +22,8 @@ std::string Expression::getType() const {
  * @brief Obtém o token associado à expressão.
  * @return O token associado.
  */
-Token Expression::getToken() const {
+Token Expression::getToken() const
+{
     return token;
 }
 
@@ -29,7 +31,8 @@ Token Expression::getToken() const {
  * @brief Obtém o nome da expressão, utilizando o valor do token.
  * @return Uma string com o valor do token.
  */
-std::string Expression::getName() const {
+std::string Expression::getName() const
+{
     return token.getValue();
 }
 
@@ -41,7 +44,7 @@ std::string Expression::getName() const {
  * @param type Tipo da constante.
  * @param token Token associado à constante.
  */
-Constant::Constant(const std::string& type, const Token& token)
+Constant::Constant(const std::string &type, const Token &token)
     : Expression(type, token) {}
 
 /**
@@ -53,14 +56,15 @@ Constant::Constant(const std::string& type, const Token& token)
  * @param token Token associado ao identificador.
  * @param decl Indica se o identificador representa uma declaração.
  */
-ID::ID(const std::string& type, const Token& token, bool decl)
+ID::ID(const std::string &type, const Token &token, bool decl)
     : Expression(type, token), decl(decl) {}
 
 /**
  * @brief Verifica se o identificador representa uma declaração.
  * @return true se for declaração, false caso contrário.
  */
-bool ID::isDecl() const {
+bool ID::isDecl() const
+{
     return decl;
 }
 
@@ -74,14 +78,15 @@ bool ID::isDecl() const {
  * @param id Ponteiro único para o identificador.
  * @param expr Ponteiro único para a expressão (por exemplo, acesso a um campo).
  */
-Access::Access(const std::string& type, const Token& token, std::unique_ptr<ID> id, std::unique_ptr<Expression> expr)
+Access::Access(const std::string &type, const Token &token, std::unique_ptr<ID> id, std::unique_ptr<Expression> expr)
     : Expression(type, token), id(std::move(id)), expr(std::move(expr)) {}
 
 /**
  * @brief Obtém o identificador associado ao acesso.
  * @return Ponteiro para o objeto ID.
  */
-ID* Access::getId() const {
+ID *Access::getId() const
+{
     return id.get();
 }
 
@@ -89,7 +94,8 @@ ID* Access::getId() const {
  * @brief Obtém a expressão associada ao acesso.
  * @return Ponteiro para a expressão.
  */
-Expression* Access::getExpr() const {
+Expression *Access::getExpr() const
+{
     return expr.get();
 }
 
@@ -103,14 +109,15 @@ Expression* Access::getExpr() const {
  * @param left Ponteiro único para a expressão da esquerda.
  * @param right Ponteiro único para a expressão da direita.
  */
-Logical::Logical(const std::string& type, const Token& token, std::unique_ptr<Expression> left, std::unique_ptr<Expression> right)
+Logical::Logical(const std::string &type, const Token &token, std::unique_ptr<Expression> left, std::unique_ptr<Expression> right)
     : Expression(type, token), left(std::move(left)), right(std::move(right)) {}
 
 /**
  * @brief Obtém a expressão à esquerda da operação lógica.
  * @return Ponteiro para a expressão à esquerda.
  */
-Expression* Logical::getLeft() const {
+Expression *Logical::getLeft() const
+{
     return left.get();
 }
 
@@ -118,7 +125,8 @@ Expression* Logical::getLeft() const {
  * @brief Obtém a expressão à direita da operação lógica.
  * @return Ponteiro para a expressão à direita.
  */
-Expression* Logical::getRight() const {
+Expression *Logical::getRight() const
+{
     return right.get();
 }
 
@@ -132,14 +140,15 @@ Expression* Logical::getRight() const {
  * @param left Ponteiro único para a expressão da esquerda.
  * @param right Ponteiro único para a expressão da direita.
  */
-Relational::Relational(const std::string& type, const Token& token, std::unique_ptr<Expression> left, std::unique_ptr<Expression> right)
+Relational::Relational(const std::string &type, const Token &token, std::unique_ptr<Expression> left, std::unique_ptr<Expression> right)
     : Expression(type, token), left(std::move(left)), right(std::move(right)) {}
 
 /**
  * @brief Obtém a expressão à esquerda da operação relacional.
  * @return Ponteiro para a expressão à esquerda.
  */
-Expression* Relational::getLeft() const {
+Expression *Relational::getLeft() const
+{
     return left.get();
 }
 
@@ -147,7 +156,8 @@ Expression* Relational::getLeft() const {
  * @brief Obtém a expressão à direita da operação relacional.
  * @return Ponteiro para a expressão à direita.
  */
-Expression* Relational::getRight() const {
+Expression *Relational::getRight() const
+{
     return right.get();
 }
 
@@ -161,14 +171,15 @@ Expression* Relational::getRight() const {
  * @param left Ponteiro único para a expressão da esquerda.
  * @param right Ponteiro único para a expressão da direita.
  */
-Arithmetic::Arithmetic(const std::string& type, const Token& token, std::unique_ptr<Expression> left, std::unique_ptr<Expression> right)
+Arithmetic::Arithmetic(const std::string &type, const Token &token, std::unique_ptr<Expression> left, std::unique_ptr<Expression> right)
     : Expression(type, token), left(std::move(left)), right(std::move(right)) {}
 
 /**
  * @brief Obtém a expressão à esquerda da operação aritmética.
  * @return Ponteiro para a expressão à esquerda.
  */
-Expression* Arithmetic::getLeft() const {
+Expression *Arithmetic::getLeft() const
+{
     return left.get();
 }
 
@@ -176,7 +187,8 @@ Expression* Arithmetic::getLeft() const {
  * @brief Obtém a expressão à direita da operação aritmética.
  * @return Ponteiro para a expressão à direita.
  */
-Expression* Arithmetic::getRight() const {
+Expression *Arithmetic::getRight() const
+{
     return right.get();
 }
 
@@ -189,14 +201,15 @@ Expression* Arithmetic::getRight() const {
  * @param token Token associado à operação.
  * @param expr Ponteiro único para a expressão.
  */
-Unary::Unary(const std::string& type, const Token& token, std::unique_ptr<Expression> expr)
+Unary::Unary(const std::string &type, const Token &token, std::unique_ptr<Expression> expr)
     : Expression(type, token), expr(std::move(expr)) {}
 
 /**
  * @brief Obtém a expressão associada à operação unária.
  * @return Ponteiro para a expressão.
  */
-Expression* Unary::getExpr() const {
+Expression *Unary::getExpr() const
+{
     return expr.get();
 }
 
@@ -211,14 +224,15 @@ Expression* Unary::getExpr() const {
  * @param args Lista de argumentos da função.
  * @param oper Operador associado à chamada (se aplicável).
  */
-Call::Call(const std::string& type, const Token& token, std::unique_ptr<ID> id, Arguments args, const std::string& oper)
+Call::Call(const std::string &type, const Token &token, std::unique_ptr<ID> id, Arguments args, const std::string &oper)
     : Expression(type, token), id(std::move(id)), args(std::move(args)), oper(oper) {}
 
 /**
  * @brief Obtém o identificador da função chamada.
  * @return Ponteiro para o objeto ID.
  */
-ID* Call::getId() const {
+ID *Call::getId() const
+{
     return id.get();
 }
 
@@ -226,7 +240,8 @@ ID* Call::getId() const {
  * @brief Obtém os argumentos passados para a função.
  * @return Referência constante para os argumentos.
  */
-const Arguments& Call::getArgs() const {
+const Arguments &Call::getArgs() const
+{
     return args;
 }
 
@@ -234,7 +249,8 @@ const Arguments& Call::getArgs() const {
  * @brief Obtém o operador associado à chamada.
  * @return Uma string contendo o operador.
  */
-std::string Call::getOper() const {
+std::string Call::getOper() const
+{
     return oper;
 }
 
@@ -252,7 +268,8 @@ Module::Module(std::unique_ptr<Body> stmts)
  * @brief Obtém os enunciados (statements) do módulo.
  * @return Referência constante para o corpo do módulo.
  */
-const Body& Module::getStmts() const {
+const Body &Module::getStmts() const
+{
     return *stmts;
 }
 
@@ -271,7 +288,8 @@ Assign::Assign(std::unique_ptr<Expression> left, std::unique_ptr<Expression> rig
  * @brief Obtém a expressão do lado esquerdo da atribuição.
  * @return Ponteiro para a expressão.
  */
-Expression* Assign::getLeft() const {
+Expression *Assign::getLeft() const
+{
     return left.get();
 }
 
@@ -279,7 +297,8 @@ Expression* Assign::getLeft() const {
  * @brief Obtém a expressão do lado direito da atribuição.
  * @return Ponteiro para a expressão.
  */
-Expression* Assign::getRight() const {
+Expression *Assign::getRight() const
+{
     return right.get();
 }
 
@@ -297,7 +316,8 @@ Return::Return(std::unique_ptr<Expression> expr)
  * @brief Obtém a expressão associada à instrução de retorno.
  * @return Ponteiro para a expressão.
  */
-Expression* Return::getExpr() const {
+Expression *Return::getExpr() const
+{
     return expr.get();
 }
 
@@ -325,7 +345,7 @@ Continue::Continue() {}
  * @param params Conjunto de parâmetros da função.
  * @param body Corpo da função (lista de instruções).
  */
-FuncDef::FuncDef(const std::string& name, const std::string& return_type, Parameters&& params, std::unique_ptr<Body> body)
+FuncDef::FuncDef(const std::string &name, const std::string &return_type, Parameters &&params, std::unique_ptr<Body> body)
     : name(name), return_type(return_type), params(std::move(params)), body(std::move(body)) {}
 
 /**
@@ -344,13 +364,13 @@ std::string FuncDef::getReturnType() const { return return_type; }
  * @brief Obtém os parâmetros da função.
  * @return Referência constante para os parâmetros.
  */
-const Parameters& FuncDef::getParams() const { return params; }
+const Parameters &FuncDef::getParams() const { return params; }
 
 /**
  * @brief Obtém o corpo (lista de instruções) da função.
  * @return Referência constante para o corpo da função.
  */
-const Body& FuncDef::getBody() const { return *body; }
+const Body &FuncDef::getBody() const { return *body; }
 
 /**
  * @brief Construtor da classe If.
@@ -368,7 +388,8 @@ If::If(std::unique_ptr<Expression> condition, std::unique_ptr<Body> body, std::u
  * @brief Obtém a condição da estrutura if.
  * @return Ponteiro para a expressão condicional.
  */
-Expression* If::getCondition() const {
+Expression *If::getCondition() const
+{
     return condition.get();
 }
 
@@ -376,7 +397,8 @@ Expression* If::getCondition() const {
  * @brief Obtém o corpo da instrução if.
  * @return Referência constante para o corpo do if.
  */
-const Body& If::getBody() const {
+const Body &If::getBody() const
+{
     return *body;
 }
 
@@ -384,7 +406,8 @@ const Body& If::getBody() const {
  * @brief Obtém o corpo da instrução else, se existir.
  * @return Ponteiro para o corpo do else ou nullptr caso não exista.
  */
-const Body* If::getElseStmt() const {
+const Body *If::getElseStmt() const
+{
     return else_stmt ? else_stmt.get() : nullptr;
 }
 
@@ -403,7 +426,8 @@ While::While(std::unique_ptr<Expression> condition, std::unique_ptr<Body> body)
  * @brief Obtém a condição do loop while.
  * @return Ponteiro para a expressão condicional.
  */
-Expression* While::getCondition() const {
+Expression *While::getCondition() const
+{
     return condition.get();
 }
 
@@ -411,7 +435,8 @@ Expression* While::getCondition() const {
  * @brief Obtém o corpo do loop while.
  * @return Referência constante para o corpo do loop.
  */
-const Body& While::getBody() const {
+const Body &While::getBody() const
+{
     return *body;
 }
 
@@ -429,7 +454,8 @@ Par::Par(std::unique_ptr<Body> body)
  * @brief Obtém o corpo do bloco encapsulado.
  * @return Referência constante para o corpo.
  */
-const Body& Par::getBody() const {
+const Body &Par::getBody() const
+{
     return *body;
 }
 
@@ -447,7 +473,8 @@ Seq::Seq(std::unique_ptr<Body> body)
  * @brief Obtém o corpo da sequência de instruções.
  * @return Referência constante para o corpo.
  */
-const Body& Seq::getBody() const {
+const Body &Seq::getBody() const
+{
     return *body;
 }
 
@@ -460,14 +487,15 @@ const Body& Seq::getBody() const {
  * @param localhost Expressão que representa o endereço local.
  * @param port Expressão que representa a porta.
  */
-Channel::Channel(const std::string& name, std::unique_ptr<Expression> localhost, std::unique_ptr<Expression> port)
+Channel::Channel(const std::string &name, std::unique_ptr<Expression> localhost, std::unique_ptr<Expression> port)
     : name(name), _localhost(std::move(localhost)), _port(std::move(port)) {}
 
 /**
  * @brief Obtém o nome do canal.
  * @return Uma string com o nome do canal.
  */
-std::string Channel::getName() const {
+std::string Channel::getName() const
+{
     return name;
 }
 
@@ -475,7 +503,8 @@ std::string Channel::getName() const {
  * @brief Obtém o endereço local do canal, utilizando o valor do token.
  * @return Uma string com o endereço local.
  */
-std::string Channel::getLocalhost() const {
+std::string Channel::getLocalhost() const
+{
     return _localhost->getToken().getValue();
 }
 
@@ -483,7 +512,8 @@ std::string Channel::getLocalhost() const {
  * @brief Obtém a porta do canal, utilizando o valor do token.
  * @return Uma string com a porta.
  */
-std::string Channel::getPort() const {
+std::string Channel::getPort() const
+{
     return _port->getToken().getValue();
 }
 
@@ -491,7 +521,8 @@ std::string Channel::getPort() const {
  * @brief Obtém o nó da expressão que representa o endereço local.
  * @return Ponteiro para a expressão do endereço local.
  */
-Expression* Channel::getLocalhostNode() const {
+Expression *Channel::getLocalhostNode() const
+{
     return _localhost.get();
 }
 
@@ -499,7 +530,8 @@ Expression* Channel::getLocalhostNode() const {
  * @brief Obtém o nó da expressão que representa a porta.
  * @return Ponteiro para a expressão da porta.
  */
-Expression* Channel::getPortNode() const {
+Expression *Channel::getPortNode() const
+{
     return _port.get();
 }
 
@@ -515,15 +547,16 @@ Expression* Channel::getPortNode() const {
  * @param func_name Nome da função associada ao canal.
  * @param description Expressão que representa a descrição do canal.
  */
-SChannel::SChannel(const std::string& name, std::unique_ptr<Expression> localhost, std::unique_ptr<Expression> port,
-                   const std::string& func_name, std::unique_ptr<Expression> description)
+SChannel::SChannel(const std::string &name, std::unique_ptr<Expression> localhost, std::unique_ptr<Expression> port,
+                   const std::string &func_name, std::unique_ptr<Expression> description)
     : Channel(name, std::move(localhost), std::move(port)), func_name(func_name), description(std::move(description)) {}
 
 /**
  * @brief Obtém o nome da função associada ao canal de serviço.
  * @return Uma string com o nome da função.
  */
-std::string SChannel::getFuncName() const {
+std::string SChannel::getFuncName() const
+{
     return func_name;
 }
 
@@ -531,7 +564,8 @@ std::string SChannel::getFuncName() const {
  * @brief Obtém a descrição do canal.
  * @return Ponteiro para a expressão que descreve o canal.
  */
-Expression* SChannel::getDescription() const {
+Expression *SChannel::getDescription() const
+{
     return description.get();
 }
 
@@ -544,5 +578,5 @@ Expression* SChannel::getDescription() const {
  * @param localhost Expressão que representa o endereço local.
  * @param port Expressão que representa a porta.
  */
-CChannel::CChannel(const std::string& name, std::unique_ptr<Expression> localhost, std::unique_ptr<Expression> port)
+CChannel::CChannel(const std::string &name, std::unique_ptr<Expression> localhost, std::unique_ptr<Expression> port)
     : Channel(name, std::move(localhost), std::move(port)) {}

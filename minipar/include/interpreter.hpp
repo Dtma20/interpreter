@@ -4,9 +4,9 @@
 #include <map>
 #include <string>
 #include <vector>
-#include <variant>
 #include <memory>
 #include <stack>
+#include <variant>
 #include "../include/ast.hpp"
 #include "../include/error.hpp"
 #include <sys/socket.h>
@@ -14,35 +14,71 @@
 #include <unistd.h>
 
 /**
- * @brief Tipo variante para representar valores em tempo de execução.
+ * @brief Wrapper para std::variant que representa valores em tempo de execução.
  *
- * Pode armazenar um número (double), uma string ou um booleano.
+ * Permite armazenar números (double), booleanos, strings ou vetores de ValueWrapper.
+ * Os tipos são definidos na ordem: tipos primitivos primeiro, depois containers.
  */
-using Value = std::variant<double, std::string, bool>;
+struct ValueWrapper
+{
+    std::variant<std::monostate, double, bool, std::string, std::vector<ValueWrapper>> data;
+
+    // Construtor padrão: inicializa como não inicializado
+    ValueWrapper() : data(std::monostate{}) {}
+
+    // Construtor para double
+    ValueWrapper(double d) : data(d) {}
+
+    // Construtor para bool
+    ValueWrapper(bool b) : data(b) {}
+
+    // Construtor para std::string
+    ValueWrapper(const std::string &s) : data(s) {}
+
+    // Construtor para const char* (opcional)
+    ValueWrapper(const char *s) : data(std::string(s)) {}
+
+    // Construtor para std::vector<ValueWrapper>
+    ValueWrapper(const std::vector<ValueWrapper> &vec) : data(vec) {}
+
+    // Método para verificar se está inicializado
+    bool isInitialized() const
+    {
+        return !std::holds_alternative<std::monostate>(data);
+    }
+
+    // Operador de conversão para facilitar o uso (opcional)
+    operator std::variant<std::monostate, double, bool, std::string, std::vector<ValueWrapper>>() const
+    {
+        return data;
+    }
+};
 
 /**
  * @brief Classe Interpreter.
  *
- * Responsável pela execução do programa, avaliando expressões, 
+ * Responsável pela execução do programa, avaliando expressões,
  * executando statements e gerenciando escopos e funções.
  */
-class Interpreter {
+class Interpreter
+{
 private:
     /**
      * @brief Estrutura para representar um escopo.
      *
      * Um escopo contém um mapeamento entre nomes de variáveis e seus valores.
      */
-    struct Scope {
-        std::map<std::string, Value> variables; ///< Mapeamento de variáveis para seus valores.
+    struct Scope
+    {
+        std::map<std::string, ValueWrapper> variables; // Mapeamento de variáveis para seus valores.
     };
 
-    std::vector<Scope> scopes;               ///< Pilha de escopos para gerenciar variáveis.
-    std::map<std::string, FuncDef*> functions; ///< Tabela de funções definidas pelo usuário.
-    bool break_flag;                         ///< Flag para controle de instrução break.
-    bool continue_flag;                      ///< Flag para controle de instrução continue.
-    bool return_flag;                        ///< Flag para controle de retorno de função.
-    Value return_value;                      ///< Valor de retorno de uma função.
+    std::vector<Scope> scopes;                  // Pilha de escopos para gerenciar variáveis.
+    std::map<std::string, FuncDef *> functions; // Tabela de funções definidas pelo usuário.
+    bool break_flag;                            // Flag para controle de instrução break.
+    bool continue_flag;                         // Flag para controle de instrução continue.
+    bool return_flag;                           // Flag para controle de retorno de função.
+    ValueWrapper return_value;                  // Valor de retorno de uma função.
 
     /**
      * @brief Avalia uma expressão da AST e retorna seu valor.
@@ -50,7 +86,7 @@ private:
      * @param expr Ponteiro para a expressão a ser avaliada.
      * @return Valor resultante da avaliação.
      */
-    Value evaluate(Expression* expr);
+    ValueWrapper evaluate(Expression *expr);
 
     /**
      * @brief Executa um statement da AST.
@@ -59,7 +95,7 @@ private:
      *
      * @param stmt Ponteiro para o statement a ser executado.
      */
-    void execute_stmt(Node* stmt);
+    void execute_stmt(Node *stmt);
 
     /**
      * @brief Executa uma função definida pelo usuário.
@@ -71,7 +107,7 @@ private:
      * @param args Lista de argumentos passados para a função.
      * @return Valor retornado pela função.
      */
-    Value execute_function(FuncDef* func, const Arguments& args);
+    ValueWrapper execute_function(FuncDef *func, const Arguments &args);
 
     /**
      * @brief Cria um novo escopo.
@@ -90,12 +126,12 @@ private:
     /**
      * @brief Verifica se um valor é considerado verdadeiro.
      *
-     * Define a veracidade de um Value baseado no seu tipo.
+     * Define a veracidade de um ValueWrapper baseado no seu tipo.
      *
      * @param value Valor a ser avaliado.
      * @return true se o valor for verdadeiro; false caso contrário.
      */
-    bool is_true(const Value& value);
+    bool is_true(const ValueWrapper &value);
 
     /**
      * @brief Executa um servidor para um canal de serviço (SChannel).
@@ -104,17 +140,17 @@ private:
      *
      * @param schannel Ponteiro para o SChannel a ser executado.
      */
-    void run_server(SChannel* schannel);
+    void run_server(SChannel *schannel);
 
     /**
-     * @brief Converte um Value para sua representação em string.
+     * @brief Converte um ValueWrapper para sua representação em string.
      *
      * Utiliza std::visit para converter o valor de cada tipo armazenado na variante.
      *
      * @param value Valor a ser convertido.
      * @return Representação em string do valor.
      */
-    std::string convert_value_to_string(const Value& value);
+    std::string convert_value_to_string(const ValueWrapper &value);
 
 public:
     /**
@@ -131,7 +167,7 @@ public:
      *
      * @param module Ponteiro para o módulo a ser executado.
      */
-    void execute(Module* module);
+    void execute(Module *module);
 };
 
 #endif // INTERPRETER_HPP

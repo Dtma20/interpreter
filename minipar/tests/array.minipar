@@ -1,0 +1,22 @@
+func max(a: number, b: number) -> number {
+    if(a >= b) {
+        return a
+    }
+    return b
+}
+
+dp : array[11]
+peso : array[3] = [2, 3, 4]
+valor : array[3] = [4, 5, 6]
+
+n : number = 3
+W : number = 10
+
+
+for (i : number = 0; i < n; i = i + 1) {
+    for (j : number = W; j >= peso[i]; j = j - 1) {
+        dp[j] = max(dp[j], dp[j - peso[i]] + valor[i])
+    }
+}
+
+print(dp[W])

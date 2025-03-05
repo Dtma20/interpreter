@@ -13,16 +13,21 @@
  * @param tokens Vetor de pares contendo os tokens e os respectivos números de linha.
  */
 Parser::Parser(std::vector<std::pair<Token, int>> tokens)
-    : tokens(std::move(tokens)), pos(0), symtable(std::make_shared<SymTable>()) {
-    if (!this->tokens.empty()) {
+    : tokens(std::move(tokens)), pos(0), symtable(std::make_shared<SymTable>())
+{
+    if (!this->tokens.empty())
+    {
         lookahead = this->tokens[pos].first;
         lineno = this->tokens[pos].second;
-    } else {
+    }
+    else
+    {
         lookahead = Token("EOF", "EOF");
         lineno = 1;
     }
     // Inserir funções padrão na tabela de símbolos
-    for (const auto& [name, type] : DEFAULT_FUNCTION_NAMES) {
+    for (const auto &[name, type] : DEFAULT_FUNCTION_NAMES)
+    {
         symtable->insert(name, Symbol(name, "FUNC"));
     }
 }
@@ -36,13 +41,18 @@ Parser::Parser(std::vector<std::pair<Token, int>> tokens)
  * @param tag A tag do token esperado.
  * @return true se o token atual casou com a tag; false caso contrário.
  */
-bool Parser::match(const std::string& tag) {
-    if (tag == lookahead.getTag()) {
+bool Parser::match(const std::string &tag)
+{
+    if (tag == lookahead.getTag())
+    {
         pos++;
-        if (pos < tokens.size()) {
+        if (pos < tokens.size())
+        {
             lookahead = tokens[pos].first;
             lineno = tokens[pos].second;
-        } else {
+        }
+        else
+        {
             lookahead = Token("EOF", "EOF");
         }
         return true;
@@ -57,7 +67,8 @@ bool Parser::match(const std::string& tag) {
  *
  * @return Ponteiro único para um objeto Module.
  */
-std::unique_ptr<Module> Parser::start() {
+std::unique_ptr<Module> Parser::start()
+{
     return program();
 }
 
@@ -68,7 +79,8 @@ std::unique_ptr<Module> Parser::start() {
  *
  * @return Ponteiro único para um objeto Module.
  */
-std::unique_ptr<Module> Parser::program() {
+std::unique_ptr<Module> Parser::program()
+{
     return std::make_unique<Module>(std::make_unique<Body>(std::move(stmts())));
 }
 
@@ -80,11 +92,14 @@ std::unique_ptr<Module> Parser::program() {
  *
  * @return Um Body contendo os statements do programa.
  */
-Body Parser::stmts() {
+Body Parser::stmts()
+{
     Body stmts;
-    while (lookahead.getTag() != "EOF") {
+    while (lookahead.getTag() != "EOF")
+    {
         skipWhitespace();
-        if (lookahead.getTag() != "EOF") {
+        if (lookahead.getTag() != "EOF")
+        {
             stmts.push_back(stmt());
         }
     }
@@ -94,8 +109,10 @@ Body Parser::stmts() {
 /**
  * @brief Avança o parser ignorando tokens de espaço em branco e quebras de linha.
  */
-void Parser::skipWhitespace() {
-    while (lookahead.getTag() == "WHITESPACE" || lookahead.getTag() == "NEWLINE") {
+void Parser::skipWhitespace()
+{
+    while (lookahead.getTag() == "WHITESPACE" || lookahead.getTag() == "NEWLINE")
+    {
         match(lookahead.getTag());
     }
 }
@@ -105,113 +122,233 @@ void Parser::skipWhitespace() {
  *
  * Dependendo do token lookahead, identifica e cria o nó correspondente, como
  * atribuição, definição de função, if, while, return, continue, break, ou declaração de canal.
+ * Agora suporta atribuição a índices de arrays (ex.: dp[j] = valor).
  *
  * @return Ponteiro único para um nó (Node) representando o statement.
  * @throws SyntaxError se houver erro de sintaxe.
  */
-std::unique_ptr<Node> Parser::stmt() {
-    LOG_DEBUG("Parser: Iniciando stmt(), lookahead: {tag: " << lookahead.getTag() << ", value: " << lookahead.getValue() << ", line: " << lineno << "}");
-    
-    if (lookahead.getTag() == "ID") {
+std::unique_ptr<Node> Parser::stmt()
+{
+    LOG_DEBUG("Parser: Iniciando stmt(), lookahead: {tag: " << lookahead.getTag()
+                                                            << ", value: " << lookahead.getValue()
+                                                            << ", line: " << lineno << "}");
+
+    if (lookahead.getTag() == "ID")
+    {
         LOG_DEBUG("Parser: Detectado ID, processando...");
-        auto left = local();
+        std::string id_name = lookahead.getValue();
+        match("ID");
         skipWhitespace();
-        if (dynamic_cast<Call*>(left.get())) {
-            return left;
-        }
-        if (match("COLON")) {
-            LOG_DEBUG("Parser: Detectado ':' após ID, processando declaração com tipo...");
-            skipWhitespace();
-            std::string type = lookahead.getValue();
-            if (!match("TYPE")) {
-                throw SyntaxError(lineno, "Esperado um tipo após ':' em lugar de " + lookahead.getValue());
+
+        if (lookahead.getTag() == "LBRACK")
+        {
+            match("LBRACK");
+            auto index = disjunction();
+            if (!match("RBRACK"))
+            {
+                throw SyntaxError(lineno, "Esperado ']' no lugar de " + lookahead.getValue());
             }
             skipWhitespace();
-            if (!match("ASSIGN")) {
-                throw SyntaxError(lineno, "Esperado '=' após tipo em lugar de " + lookahead.getValue());
+            if (!match("ASSIGN"))
+            {
+                throw SyntaxError(lineno, "Esperado '=' após acesso a índice em lugar de " + lookahead.getValue());
             }
             skipWhitespace();
             auto right = arithmetic();
             skipWhitespace();
-            return std::make_unique<Assign>(std::move(left), std::move(right));
+            auto access = std::make_unique<Access>("", Token("ACCESS", "[]"),
+                                                   std::make_unique<ID>("", Token("ID", id_name)),
+                                                   std::move(index));
+            return std::make_unique<Assign>(std::move(access), std::move(right));
         }
-        if (match("ASSIGN")) {
-            LOG_DEBUG("Parser: Detectado '=' após ID, processando atribuição...");
+        else if (lookahead.getTag() == "COLON")
+        {
+            match("COLON");
+            skipWhitespace();
+            if (lookahead.getValue() == "array")
+            {
+                match("TYPE"); // "array" deve ser reconhecido como "TYPE" no lexer
+                skipWhitespace();
+                if (lookahead.getTag() == "LBRACK")
+                {
+                    match("LBRACK");
+                    auto size_expr = disjunction(); // Parse da expressão de tamanho
+                    if (!match("RBRACK"))
+                    {
+                        throw SyntaxError(lineno, "Esperado ']' após expressão de tamanho");
+                    }
+                    skipWhitespace();
+                    // Opcional: permitir atribuição após a declaração, ex: arr : array[50] = [1,2,3]
+                    if (lookahead.getTag() == "ASSIGN") {
+                        match("ASSIGN"); // Consome o '='
+                        skipWhitespace();
+                        auto right = arithmetic(); // Analisa o lado direito da atribuição
+                        skipWhitespace();
+                    
+                        // Passo 1: Criar a declaração do array
+                        auto array_decl = std::make_unique<ArrayDecl>(id_name, std::move(size_expr));
+                    
+                        // Passo 2: Criar a atribuição usando o identificador do array
+                        auto assign = std::make_unique<Assign>(
+                            std::make_unique<ID>("ID", Token("ID", id_name)), // Lado esquerdo: referência ao array
+                            std::move(right)                                  // Lado direito: valor a ser atribuído
+                        );
+                    
+                        // Combinar declaração e atribuição em uma sequência
+                        Body seq_body;
+                        seq_body.push_back(std::move(array_decl));
+                        seq_body.push_back(std::move(assign));
+                        return std::make_unique<Seq>(std::make_unique<Body>(std::move(seq_body)));
+                    } else {
+                        // Apenas declaração, sem atribuição
+                        return std::make_unique<ArrayDecl>(id_name, std::move(size_expr));
+                    }
+                }
+                else
+                {
+                    throw SyntaxError(lineno, "Esperado '[' após 'array'");
+                }
+            }
+            else
+            {
+                // Declaração de tipo simples: x : number = ...
+                std::string type = lookahead.getValue();
+                if (!match("TYPE"))
+                {
+                    throw SyntaxError(lineno, "Esperado um tipo após ':' em lugar de " + lookahead.getValue());
+                }
+                skipWhitespace();
+                if (!match("ASSIGN"))
+                {
+                    throw SyntaxError(lineno, "Esperado '=' após tipo em lugar de " + lookahead.getValue());
+                }
+                skipWhitespace();
+                auto right = arithmetic();
+                skipWhitespace();
+                auto id = std::make_unique<ID>(type, Token("ID", id_name), true);
+                return std::make_unique<Assign>(std::move(id), std::move(right));
+            }
+        }
+        else if (lookahead.getTag() == "ASSIGN")
+        {
+            // Atribuição simples: x = ...
+            match("ASSIGN");
             skipWhitespace();
             auto right = arithmetic();
             skipWhitespace();
-            return std::make_unique<Assign>(std::move(left), std::move(right));
+            auto id = std::make_unique<ID>("", Token("ID", id_name));
+            return std::make_unique<Assign>(std::move(id), std::move(right));
         }
-        LOG_DEBUG("Parser: Erro, esperado ':' ou '=' após identificador");
-        throw SyntaxError(lineno, "Esperado ':' ou '=' após identificador em lugar de " + lookahead.getValue());
+        else if (lookahead.getTag() == "LPAREN")
+        {
+            // Chamada de função: func()
+            match("LPAREN");
+            Arguments args;
+            if (lookahead.getTag() != "RPAREN")
+            {
+                args.push_back(disjunction());
+                while (lookahead.getTag() == ",")
+                {
+                    match(",");
+                    args.push_back(disjunction());
+                }
+            }
+            if (!match("RPAREN"))
+            {
+                throw SyntaxError(lineno, "Esperado ')' no lugar de " + lookahead.getValue());
+            }
+            return std::make_unique<Call>("", Token("ID", id_name),
+                                          std::make_unique<ID>("", Token("ID", id_name)),
+                                          std::move(args), id_name);
+        }
+        else
+        {
+            LOG_DEBUG("Parser: Erro, esperado ':', '=', '[' ou '(' após identificador");
+            throw SyntaxError(lineno, "Esperado ':', '=', '[' ou '(' após identificador em lugar de " + lookahead.getValue());
+        }
     }
-    else if (lookahead.getTag() == "FUNC") {
+    else if (lookahead.getTag() == "FUNC")
+    {
         LOG_DEBUG("Parser: Detectado FUNC, processando...");
         match("FUNC");
         std::string name = var("FUNC");
         Parameters params = this->params();
-        if (!match("RARROW")) {
+        if (!match("RARROW"))
+        {
             throw SyntaxError(lineno, "Esperado '->' no lugar de " + lookahead.getValue());
         }
         std::string type = lookahead.getValue();
-        if (!match("TYPE")) {
+        if (!match("TYPE"))
+        {
             throw SyntaxError(lineno, "Tipo de retorno inválido: " + lookahead.getValue());
         }
         skipWhitespace();
-        if (!match("LBRACE")) {
+        if (!match("LBRACE"))
+        {
             throw SyntaxError(lineno, "Esperado '{' no lugar de " + lookahead.getValue());
         }
         Body body;
-        while (lookahead.getTag() != "RBRACE" && lookahead.getTag() != "EOF") {
+        while (lookahead.getTag() != "RBRACE" && lookahead.getTag() != "EOF")
+        {
             body.push_back(stmt());
         }
-        if (!match("RBRACE")) {
+        if (!match("RBRACE"))
+        {
             throw SyntaxError(lineno, "Esperado '}' no lugar de " + lookahead.getValue());
         }
         skipWhitespace();
         auto func_def = std::make_unique<FuncDef>(
             name, type, std::move(params),
-            std::make_unique<Body>(std::move(body))
-        );
+            std::make_unique<Body>(std::move(body)));
         symtable->insert(name, Symbol(name, "FUNC"));
         return func_def;
     }
-    else if (lookahead.getTag() == "IF") {
+    else if (lookahead.getTag() == "IF")
+    {
         LOG_DEBUG("Parser: Detectado IF, processando...");
         match("IF");
-        if (!match("LPAREN")) {
+        if (!match("LPAREN"))
+        {
             throw SyntaxError(lineno, "Esperado '(' no lugar de " + lookahead.getValue());
         }
         auto cond = disjunction();
-        if (!match("RPAREN")) {
+        if (!match("RPAREN"))
+        {
             throw SyntaxError(lineno, "Esperado ')' no lugar de " + lookahead.getValue());
         }
         skipWhitespace();
-        if (!match("LBRACE")) {
+        if (!match("LBRACE"))
+        {
             throw SyntaxError(lineno, "Esperado '{' no lugar de " + lookahead.getValue());
         }
         Body body;
-        while (lookahead.getTag() != "RBRACE" && lookahead.getTag() != "EOF") {
+        while (lookahead.getTag() != "RBRACE" && lookahead.getTag() != "EOF")
+        {
             body.push_back(stmt());
         }
-        if (!match("RBRACE")) {
+        if (!match("RBRACE"))
+        {
             throw SyntaxError(lineno, "Esperado '}' no lugar de " + lookahead.getValue());
         }
         skipWhitespace();
 
         std::unique_ptr<Body> else_stmt = nullptr;
-        if (lookahead.getTag() == "ELSE") {
+        if (lookahead.getTag() == "ELSE")
+        {
             LOG_DEBUG("Parser: Detectado ELSE, processando...");
             match("ELSE");
             skipWhitespace();
-            if (!match("LBRACE")) {
+            if (!match("LBRACE"))
+            {
                 throw SyntaxError(lineno, "Esperado '{' após 'else' no lugar de " + lookahead.getValue());
             }
             Body else_body;
-            while (lookahead.getTag() != "RBRACE" && lookahead.getTag() != "EOF") {
+            while (lookahead.getTag() != "RBRACE" && lookahead.getTag() != "EOF")
+            {
                 else_body.push_back(stmt());
             }
-            if (!match("RBRACE")) {
+            if (!match("RBRACE"))
+            {
                 throw SyntaxError(lineno, "Esperado '}' após corpo do else no lugar de " + lookahead.getValue());
             }
             else_stmt = std::make_unique<Body>(std::move(else_body));
@@ -221,38 +358,45 @@ std::unique_ptr<Node> Parser::stmt() {
         return std::make_unique<If>(
             std::move(cond),
             std::make_unique<Body>(std::move(body)),
-            std::move(else_stmt)
-        );
+            std::move(else_stmt));
     }
-    else if (lookahead.getTag() == "ELSE") {
+    else if (lookahead.getTag() == "ELSE")
+    {
         LOG_DEBUG("Parser: Erro, 'else' encontrado sem 'if'");
         throw SyntaxError(lineno, "'else' encontrado sem 'if' correspondente");
     }
-    else if (lookahead.getTag() == "WHILE") {
+    else if (lookahead.getTag() == "WHILE")
+    {
         LOG_DEBUG("Parser: Detectado WHILE, processando...");
         match("WHILE");
-        if (!match("LPAREN")) {
+        if (!match("LPAREN"))
+        {
             throw SyntaxError(lineno, "Esperado '(' no lugar de " + lookahead.getValue());
         }
         auto cond = disjunction();
-        if (!match("RPAREN")) {
+        if (!match("RPAREN"))
+        {
             throw SyntaxError(lineno, "Esperado ')' no lugar de " + lookahead.getValue());
         }
         skipWhitespace();
-        if (!match("LBRACE")) {
+        if (!match("LBRACE"))
+        {
             throw SyntaxError(lineno, "Esperado '{' no lugar de " + lookahead.getValue());
         }
         Body body;
-        while (lookahead.getTag() != "RBRACE" && lookahead.getTag() != "EOF") {
+        while (lookahead.getTag() != "RBRACE" && lookahead.getTag() != "EOF")
+        {
             body.push_back(stmt());
         }
-        if (!match("RBRACE")) {
+        if (!match("RBRACE"))
+        {
             throw SyntaxError(lineno, "Esperado '}' no lugar de " + lookahead.getValue());
         }
         skipWhitespace();
         return std::make_unique<While>(std::move(cond), std::make_unique<Body>(std::move(body)));
     }
-    else if (lookahead.getTag() == "RETURN") {
+    else if (lookahead.getTag() == "RETURN")
+    {
         LOG_DEBUG("Parser: Detectado RETURN, processando...");
         match("RETURN");
         skipWhitespace();
@@ -260,102 +404,125 @@ std::unique_ptr<Node> Parser::stmt() {
         skipWhitespace();
         return std::make_unique<Return>(std::move(expr));
     }
-    else if (lookahead.getTag() == "BREAK") {
+    else if (lookahead.getTag() == "BREAK")
+    {
         LOG_DEBUG("Parser: Detectado BREAK, processando...");
         match("BREAK");
         skipWhitespace();
         return std::make_unique<Break>();
     }
-    else if (lookahead.getTag() == "CONTINUE") {
+    else if (lookahead.getTag() == "CONTINUE")
+    {
         LOG_DEBUG("Parser: Detectado CONTINUE, processando...");
         match("CONTINUE");
         skipWhitespace();
         return std::make_unique<Continue>();
     }
-    else if (lookahead.getTag() == "SEQ") {
+    else if (lookahead.getTag() == "SEQ")
+    {
         LOG_DEBUG("Parser: Detectado SEQ, processando...");
         match("SEQ");
         skipWhitespace();
-        if (!match("LBRACE")) {
+        if (!match("LBRACE"))
+        {
             throw SyntaxError(lineno, "Esperado '{' após 'seq' no lugar de " + lookahead.getValue());
         }
         Body body;
-        while (lookahead.getTag() != "RBRACE" && lookahead.getTag() != "EOF") {
+        while (lookahead.getTag() != "RBRACE" && lookahead.getTag() != "EOF")
+        {
             body.push_back(stmt());
         }
-        if (!match("RBRACE")) {
+        if (!match("RBRACE"))
+        {
             throw SyntaxError(lineno, "Esperado '}' após corpo do seq no lugar de " + lookahead.getValue());
         }
         skipWhitespace();
         return std::make_unique<Seq>(std::make_unique<Body>(std::move(body)));
     }
-    else if (lookahead.getTag() == "PAR") {
+    else if (lookahead.getTag() == "PAR")
+    {
         LOG_DEBUG("Parser: Detectado PAR, processando...");
         match("PAR");
         skipWhitespace();
-        if (!match("LBRACE")) {
+        if (!match("LBRACE"))
+        {
             throw SyntaxError(lineno, "Esperado '{' após 'par' no lugar de " + lookahead.getValue());
         }
         Body body;
-        while (lookahead.getTag() != "RBRACE" && lookahead.getTag() != "EOF") {
+        while (lookahead.getTag() != "RBRACE" && lookahead.getTag() != "EOF")
+        {
             body.push_back(stmt());
         }
-        if (!match("RBRACE")) {
+        if (!match("RBRACE"))
+        {
             throw SyntaxError(lineno, "Esperado '}' após corpo do par no lugar de " + lookahead.getValue());
         }
         skipWhitespace();
         return std::make_unique<Par>(std::make_unique<Body>(std::move(body)));
     }
-    else if (lookahead.getTag() == "C_CHANNEL") {
+    else if (lookahead.getTag() == "C_CHANNEL")
+    {
         LOG_DEBUG("Parser: Detectado C_CHANNEL, processando...");
         match("C_CHANNEL");
         std::string name = lookahead.getValue();
-        if (!match("ID")) {
+        if (!match("ID"))
+        {
             throw SyntaxError(lineno, "Esperado identificador para c_channel em lugar de " + lookahead.getValue());
         }
         skipWhitespace();
-        if (!match("LBRACE")) {
+        if (!match("LBRACE"))
+        {
             throw SyntaxError(lineno, "Esperado '{' no lugar de " + lookahead.getValue());
         }
         auto localhost = disjunction();
-        if (!match(",")) {
+        if (!match(","))
+        {
             throw SyntaxError(lineno, "Esperado ',' após localhost em lugar de " + lookahead.getValue());
         }
         auto port = disjunction();
-        if (!match("RBRACE")) {
+        if (!match("RBRACE"))
+        {
             throw SyntaxError(lineno, "Esperado '}' no lugar de " + lookahead.getValue());
         }
         skipWhitespace();
         return std::make_unique<CChannel>(name, std::move(localhost), std::move(port));
     }
-    else if (lookahead.getTag() == "S_CHANNEL") {
+    else if (lookahead.getTag() == "S_CHANNEL")
+    {
         LOG_DEBUG("Parser: Detectado S_CHANNEL, processando...");
         match("S_CHANNEL");
         std::string name = lookahead.getValue();
-        if (!match("ID")) {
+        if (!match("ID"))
+        {
             throw SyntaxError(lineno, "Esperado identificador para s_channel em lugar de " + lookahead.getValue());
         }
         skipWhitespace();
-        if (!match("LBRACE")) {
+        if (!match("LBRACE"))
+        {
             throw SyntaxError(lineno, "Esperado '{' no lugar de " + lookahead.getValue());
         }
         std::string func_name = lookahead.getValue();
-        if (!match("ID")) {
+        if (!match("ID"))
+        {
             throw SyntaxError(lineno, "Esperado identificador de função em lugar de " + lookahead.getValue());
         }
-        if (!match(",")) {
+        if (!match(","))
+        {
             throw SyntaxError(lineno, "Esperado ',' após nome da função em lugar de " + lookahead.getValue());
         }
         auto desc = disjunction();
-        if (!match(",")) {
+        if (!match(","))
+        {
             throw SyntaxError(lineno, "Esperado ',' após descrição em lugar de " + lookahead.getValue());
         }
         auto localhost = disjunction();
-        if (!match(",")) {
+        if (!match(","))
+        {
             throw SyntaxError(lineno, "Esperado ',' após localhost em lugar de " + lookahead.getValue());
         }
         auto port = disjunction();
-        if (!match("RBRACE")) {
+        if (!match("RBRACE"))
+        {
             throw SyntaxError(lineno, "Esperado '}' no lugar de " + lookahead.getValue());
         }
         skipWhitespace();
@@ -364,10 +531,10 @@ std::unique_ptr<Node> Parser::stmt() {
             std::move(localhost),
             std::move(port),
             func_name,
-            std::move(desc)
-        );
+            std::move(desc));
     }
-    else if (lookahead.getTag() == "FOR") {
+    else if (lookahead.getTag() == "FOR")
+    {
         match("FOR");
         match("LPAREN");
         auto init = stmt();
@@ -378,13 +545,15 @@ std::unique_ptr<Node> Parser::stmt() {
         match("RPAREN");
         match("LBRACE");
         Body body;
-        while (lookahead.getTag() != "RBRACE" && lookahead.getTag() != "EOF") {
+        while (lookahead.getTag() != "RBRACE" && lookahead.getTag() != "EOF")
+        {
             body.push_back(stmt());
         }
         match("RBRACE");
 
         Body while_body;
-        for (auto& stmt : body) {
+        for (auto &stmt : body)
+        {
             while_body.push_back(std::move(stmt));
         }
         while_body.push_back(std::move(incr));
@@ -393,11 +562,11 @@ std::unique_ptr<Node> Parser::stmt() {
         for_body.push_back(std::move(init));
         for_body.push_back(std::make_unique<While>(
             std::move(cond),
-            std::make_unique<Body>(std::move(while_body))
-        ));
+            std::make_unique<Body>(std::move(while_body))));
         return std::make_unique<Seq>(std::make_unique<Body>(std::move(for_body)));
     }
-    else {
+    else
+    {
         LOG_DEBUG("Parser: Erro, token inesperado: " << lookahead.getTag());
         throw SyntaxError(lineno, lookahead.getValue() + " não inicia instrução válida");
     }
@@ -411,21 +580,26 @@ std::unique_ptr<Node> Parser::stmt() {
  * @return Parameters, que é um mapa contendo o nome do parâmetro e um par com o tipo e um valor padrão (opcional).
  * @throws SyntaxError se a sintaxe dos parâmetros estiver incorreta.
  */
-Parameters Parser::params() {
+Parameters Parser::params()
+{
     Parameters parameters;
-    if (!match("LPAREN")) {
+    if (!match("LPAREN"))
+    {
         throw SyntaxError(lineno, "esperando ( no lugar de " + lookahead.getValue());
     }
-    if (lookahead.getValue() != ")") {
+    if (lookahead.getValue() != ")")
+    {
         auto p = param();
-        parameters.insert({ std::move(p.first), std::move(p.second) });
+        parameters.insert({std::move(p.first), std::move(p.second)});
     }
-    while (lookahead.getTag() == ",") {
+    while (lookahead.getTag() == ",")
+    {
         match(",");
         auto p = param();
-        parameters.insert({ std::move(p.first), std::move(p.second) });
+        parameters.insert({std::move(p.first), std::move(p.second)});
     }
-    if (!match("RPAREN")) {
+    if (!match("RPAREN"))
+    {
         throw SyntaxError(lineno, "esperando ) no lugar de " + lookahead.getValue());
     }
     return parameters;
@@ -440,20 +614,25 @@ Parameters Parser::params() {
  * @return Um par contendo o nome do parâmetro e um par com o tipo e um ponteiro para a expressão do valor padrão (se houver).
  * @throws SyntaxError se houver erro na definição do parâmetro.
  */
-std::pair<std::string, std::pair<std::string, std::unique_ptr<Expression>>> Parser::param() {
+std::pair<std::string, std::pair<std::string, std::unique_ptr<Expression>>> Parser::param()
+{
     std::string name = lookahead.getValue();
-    if (!match("ID")) {
+    if (!match("ID"))
+    {
         throw SyntaxError(lineno, "nome " + name + " inválido para um parâmetro");
     }
-    if (!match("COLON")) {
+    if (!match("COLON"))
+    {
         throw SyntaxError(lineno, "esperado : no lugar de " + lookahead.getValue());
     }
     std::string type = lookahead.getValue();
-    if (!match("TYPE")) {
+    if (!match("TYPE"))
+    {
         throw SyntaxError(lineno, "esperado um tipo no lugar de " + lookahead.getValue());
     }
     std::unique_ptr<Expression> default_value = nullptr;
-    if (lookahead.getTag() == "=") {
+    if (lookahead.getTag() == "=")
+    {
         match("ASSIGN");
         default_value = disjunction();
     }
@@ -467,10 +646,12 @@ std::pair<std::string, std::pair<std::string, std::unique_ptr<Expression>>> Pars
  *
  * @return Ponteiro único para uma expressão (Expression).
  */
-std::unique_ptr<Expression> Parser::disjunction() {
-    skipWhitespace();  // Garante que se inicia com um token válido
+std::unique_ptr<Expression> Parser::disjunction()
+{
+    skipWhitespace(); // Garante que se inicia com um token válido
     auto left = conjunction();
-    while (lookahead.getTag() == "OR") {
+    while (lookahead.getTag() == "OR")
+    {
         Token token = lookahead;
         match("OR");
         skipWhitespace();
@@ -487,10 +668,12 @@ std::unique_ptr<Expression> Parser::disjunction() {
  *
  * @return Ponteiro único para uma expressão (Expression).
  */
-std::unique_ptr<Expression> Parser::conjunction() {
+std::unique_ptr<Expression> Parser::conjunction()
+{
     skipWhitespace();
     auto left = equality();
-    while (lookahead.getTag() == "AND") {
+    while (lookahead.getTag() == "AND")
+    {
         Token token = lookahead;
         match("AND");
         skipWhitespace();
@@ -508,22 +691,27 @@ std::unique_ptr<Expression> Parser::conjunction() {
  *
  * @return Ponteiro único para uma expressão (Expression) representando a variável, chamada ou declaração.
  */
-std::unique_ptr<Expression> Parser::local() {
+std::unique_ptr<Expression> Parser::local()
+{
     std::string name = lookahead.getValue();
     match("ID");
 
     // Verifica se é uma chamada de função
-    if (lookahead.getTag() == "LPAREN") {
+    if (lookahead.getTag() == "LPAREN")
+    {
         match("LPAREN");
         Arguments args;
-        if (lookahead.getTag() != "RPAREN") {
+        if (lookahead.getTag() != "RPAREN")
+        {
             args.push_back(disjunction());
-            while (lookahead.getTag() == ",") {
+            while (lookahead.getTag() == ",")
+            {
                 match(",");
                 args.push_back(disjunction());
             }
         }
-        if (!match("RPAREN")) {
+        if (!match("RPAREN"))
+        {
             throw SyntaxError(lineno, "Esperado ')' no lugar de " + lookahead.getValue());
         }
         return std::make_unique<Call>("", Token("ID", name),
@@ -532,9 +720,11 @@ std::unique_ptr<Expression> Parser::local() {
     }
 
     // Se vier o ':' para declaração de variável com tipo
-    if (match("COLON")) {
+    if (match("COLON"))
+    {
         std::string type = lookahead.getValue();
-        if (!match("TYPE")) {
+        if (!match("TYPE"))
+        {
             throw SyntaxError(lineno, "Esperado um tipo após ':' em lugar de " + lookahead.getValue());
         }
         return std::make_unique<ID>(type, Token("ID", name), true);
@@ -550,8 +740,10 @@ std::unique_ptr<Expression> Parser::local() {
  * @return Uma string com o nome do identificador.
  * @throws SyntaxError se o token atual não for um identificador.
  */
-std::string Parser::var(const std::string& context) {
-    if (lookahead.getTag() != "ID") {
+std::string Parser::var(const std::string &context)
+{
+    if (lookahead.getTag() != "ID")
+    {
         throw SyntaxError(lineno, "Esperado identificador após '" + context + "' em lugar de " + lookahead.getValue());
     }
     std::string name = lookahead.getValue();
@@ -567,11 +759,14 @@ std::string Parser::var(const std::string& context) {
  *
  * @return Ponteiro único para uma expressão (Expression).
  */
-std::unique_ptr<Expression> Parser::equality() {
+std::unique_ptr<Expression> Parser::equality()
+{
     auto left = comparison();
-    while (lookahead.getTag() == "EQ" || lookahead.getTag() == "NEQ") {
+    while (lookahead.getTag() == "EQ" || lookahead.getTag() == "NEQ")
+    {
         Token token = lookahead;
-        if (match("EQ") || match("NEQ")) {
+        if (match("EQ") || match("NEQ"))
+        {
             auto right = comparison();
             left = std::make_unique<Relational>("BOOL", token, std::move(left), std::move(right));
         }
@@ -587,12 +782,15 @@ std::unique_ptr<Expression> Parser::equality() {
  *
  * @return Ponteiro único para uma expressão (Expression).
  */
-std::unique_ptr<Expression> Parser::comparison() {
+std::unique_ptr<Expression> Parser::comparison()
+{
     auto left = arithmetic();
     while (lookahead.getTag() == "LTE" || lookahead.getTag() == "GTE" ||
-           lookahead.getTag() == "<" || lookahead.getTag() == ">") {
+           lookahead.getTag() == "<" || lookahead.getTag() == ">")
+    {
         Token token = lookahead;
-        if (match("LTE") || match("GTE") || match("<") || match(">")) {
+        if (match("LTE") || match("GTE") || match("<") || match(">"))
+        {
             auto right = arithmetic();
             left = std::make_unique<Relational>("BOOL", token, std::move(left), std::move(right));
         }
@@ -608,9 +806,11 @@ std::unique_ptr<Expression> Parser::comparison() {
  *
  * @return Ponteiro único para uma expressão (Expression).
  */
-std::unique_ptr<Expression> Parser::arithmetic() {
+std::unique_ptr<Expression> Parser::arithmetic()
+{
     auto left = term();
-    while (lookahead.getTag() == "+" || lookahead.getTag() == "-") {
+    while (lookahead.getTag() == "+" || lookahead.getTag() == "-")
+    {
         std::string op = lookahead.getTag();
         match(op);
         auto right = term();
@@ -627,11 +827,14 @@ std::unique_ptr<Expression> Parser::arithmetic() {
  *
  * @return Ponteiro único para uma expressão (Expression).
  */
-std::unique_ptr<Expression> Parser::term() {
+std::unique_ptr<Expression> Parser::term()
+{
     auto left = unary();
-    while (lookahead.getTag() == "*" || lookahead.getTag() == "/") {
+    while (lookahead.getTag() == "*" || lookahead.getTag() == "/")
+    {
         Token token = lookahead;
-        if (match("*") || match("/")) {
+        if (match("*") || match("/"))
+        {
             auto right = unary();
             left = std::make_unique<Arithmetic>("NUMBER", token, std::move(left), std::move(right));
         }
@@ -647,13 +850,17 @@ std::unique_ptr<Expression> Parser::term() {
  *
  * @return Ponteiro único para uma expressão (Expression).
  */
-std::unique_ptr<Expression> Parser::unary() {
-    if (lookahead.getTag() == "-") {
+std::unique_ptr<Expression> Parser::unary()
+{
+    if (lookahead.getTag() == "-")
+    {
         Token token = lookahead;
         match("-");
         auto expr = unary();
         return std::make_unique<Unary>("NUMBER", token, std::move(expr));
-    } else if (lookahead.getTag() == "!") {
+    }
+    else if (lookahead.getTag() == "!")
+    {
         Token token = lookahead;
         match("!");
         auto expr = unary();
@@ -667,8 +874,10 @@ std::unique_ptr<Expression> Parser::unary() {
  *
  * @return O token seguinte ou EOF se não houver.
  */
-Token Parser::peekNext() {
-    if (pos + 1 < tokens.size()) {
+Token Parser::peekNext()
+{
+    if (pos + 1 < tokens.size())
+    {
         return tokens[pos + 1].first;
     }
     return Token("EOF", "EOF");
@@ -683,43 +892,61 @@ Token Parser::peekNext() {
  * @return Ponteiro único para uma expressão (Expression).
  * @throws SyntaxError se nenhum literal, identificador ou expressão válida for encontrada.
  */
-std::unique_ptr<Expression> Parser::primary() {
-    if (lookahead.getTag() == "NUMBER") {
+std::unique_ptr<Expression> Parser::primary()
+{
+    if (lookahead.getTag() == "NUMBER")
+    {
         std::string value = lookahead.getValue();
         match("NUMBER");
         return std::make_unique<Constant>("NUMBER", Token("NUMBER", value));
-    } else if (lookahead.getTag() == "STRING") {
+    }
+    else if (lookahead.getTag() == "STRING")
+    {
         std::string value = lookahead.getValue();
         match("STRING");
         return std::make_unique<Constant>("STRING", Token("STRING", value));
-    } else if (lookahead.getTag() == "TRUE") {
+    }
+    else if (lookahead.getTag() == "TRUE")
+    {
         match("TRUE");
         return std::make_unique<Constant>("BOOL", Token("TRUE", "true"));
-    } else if (lookahead.getTag() == "FALSE") {
+    }
+    else if (lookahead.getTag() == "FALSE")
+    {
         match("FALSE");
         return std::make_unique<Constant>("BOOL", Token("FALSE", "false"));
-    } else if (lookahead.getTag() == "ID") {
+    }
+    else if (lookahead.getTag() == "ID")
+    {
         std::string name = lookahead.getValue();
         match("ID");
-        if (lookahead.getTag() == "LPAREN") {
+        if (lookahead.getTag() == "LPAREN")
+        {
             match("LPAREN");
             Arguments args;
-            if (lookahead.getTag() != "RPAREN") {
+            if (lookahead.getTag() != "RPAREN")
+            {
                 args.push_back(disjunction());
-                while (lookahead.getTag() == ",") {
+                while (lookahead.getTag() == ",")
+                {
                     match(",");
                     args.push_back(disjunction());
                 }
             }
-            if (!match("RPAREN")) {
+            if (!match("RPAREN"))
+            {
                 throw SyntaxError(lineno, "Esperado ')' no lugar de " + lookahead.getValue());
             }
-            return std::make_unique<Call>("", Token("ID", name), std::make_unique<ID>("", Token("ID", name)), std::move(args), name);
-        } else if (lookahead.getTag() == "LBRACK") {
-            // Acesso a elemento (ex: array ou string)
+            return std::make_unique<Call>("", Token("ID", name),
+                                          std::make_unique<ID>("", Token("ID", name)),
+                                          std::move(args), name);
+        }
+        else if (lookahead.getTag() == "LBRACK")
+        {
             match("LBRACK");
             auto index = disjunction();
-            if (!match("RBRACK")) {
+            if (!match("RBRACK"))
+            {
                 throw SyntaxError(lineno, "Esperado ']' no lugar de " + lookahead.getValue());
             }
             return std::make_unique<Access>("STRING", Token("ACCESS", "[]"),
@@ -727,13 +954,38 @@ std::unique_ptr<Expression> Parser::primary() {
                                             std::move(index));
         }
         return std::make_unique<ID>("", Token("ID", name));
-    } else if (lookahead.getTag() == "LPAREN") {
+    }
+    else if (lookahead.getTag() == "LPAREN")
+    {
         match("LPAREN");
         auto expr = disjunction();
-        if (!match("RPAREN")) {
+        if (!match("RPAREN"))
+        {
             throw SyntaxError(lineno, "Esperado ')' no lugar de " + lookahead.getValue());
         }
         return expr;
+    }
+    else if (lookahead.getTag() == "LBRACK")
+    {
+        match("LBRACK");
+        std::vector<std::unique_ptr<Expression>> elements;
+
+        if (lookahead.getTag() != "RBRACK")
+        {
+            elements.push_back(disjunction());
+            while (lookahead.getTag() == ",")
+            {
+                match(",");
+                elements.push_back(disjunction());
+            }
+        }
+
+        if (!match("RBRACK"))
+        {
+            throw SyntaxError(lineno, "Esperado ']' no lugar de " + lookahead.getValue());
+        }
+
+        return std::make_unique<Array>(std::move(elements));
     }
     throw SyntaxError(lineno, "Esperado literal, identificador ou expressão em parênteses em lugar de " + lookahead.getValue());
 }

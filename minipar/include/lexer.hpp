@@ -5,17 +5,19 @@
 #include <unordered_map>
 #include <vector>
 #include <regex>
-#include "token.hpp" 
+#include "token.hpp"
 
-class ILexer {
+class ILexer
+{
 public:
     virtual ~ILexer() = default;
     virtual std::vector<std::pair<Token, int>> scan() = 0;
 };
 
-class Lexer : public ILexer {
+class Lexer : public ILexer
+{
 public:
-    Lexer(const std::string& data);
+    Lexer(const std::string &data);
     std::vector<std::pair<Token, int>> scan() override;
 
 private:
