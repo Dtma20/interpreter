@@ -3,7 +3,7 @@ a: number = 0
 b: number = 1
 i: number = 0
 
-while (i < n) {
+while (i < n - 1) {
     c: number = a + b
     a = b
     b = c
