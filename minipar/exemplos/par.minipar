@@ -1,0 +1,4 @@
+  par {
+      print("tarefa 1")
+      print("tarefa 2")
+  }

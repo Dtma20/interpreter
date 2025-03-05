@@ -1,154 +1,252 @@
-# Minipar
+# Minipar: Linguagem de Programação Minimalista
 
-**Minipar** é um interpretador para uma linguagem de programação simples escrita em C++17. Ele suporta atribuições de variáveis, funções definidas pelo usuário, controle de fluxo (`if`, `while`, `break`, `continue`), chamadas de função embutidas (como `print`), e estruturas paralelas/sequenciais (`par`, `seq`). O projeto foi desenvolvido como parte de um estudo de compiladores na UFAL e pode ser executado com entrada de arquivos ou diretamente no terminal.
+Minipar é uma linguagem de programação minimalista desenvolvida para oferecer suporte a estruturas básicas de controle, paralelismo e comunicação por canais. Com uma sintaxe simples e expressiva, o projeto inclui um analisador léxico, sintático, semântico e um interpretador escrito em C++.
 
-## Funcionalidades
-
-- **Declaração de Variáveis**: Suporta variáveis tipadas (ex.: `x: number = 42`).
-- **Funções**: Permite definir funções recursivas ou iterativas (ex.: `func fib(n: number) -> number { ... }`).
-- **Controle de Fluxo**: Inclui `if`, `while`, `break`, e `continue`.
-- **Expressões**: Suporta operações aritméticas (`+`, `-`, `*`, `/`), relacionais (`<`, `>`, `<=`, `>=`, `==`, `!=`), e unárias (`-`, `!`).
-- **Paralelismo**: Estrutura `par` para execução paralela básica usando threads.
-- **Entrada/Saída**: Função embutida `print` para saída no console.
+---
 
 ## Estrutura do Projeto
 
-```
-minipar/
-├── include/         # Cabeçalhos (.hpp)
-│   ├── ast.hpp
-│   ├── error.hpp
-│   ├── interpreter.hpp
-│   ├── lexer.hpp
-│   ├── parser.hpp
-│   ├── semantic.hpp
-│   ├── symtable.hpp
-│   └── token.hpp
-├── src/            # Implementações (.cpp)
-│   ├── ast.cpp
-│   ├── error.cpp
-│   ├── interpreter.cpp
-│   ├── lexer.cpp
-│   ├── parser.cpp
-│   ├── semantic.cpp
-│   └── token.cpp
-├── main.cpp        # Ponto de entrada
-├── tests/          # Arquivos de teste
-│   ├── fib.minipar
-│   └── fib2.minipar
-└── README.md       # Este arquivo
-```
+A organização dos arquivos do Minipar segue uma estrutura clara e modular, facilitando a manutenção e a expansão:
 
-## Requisitos
+- **build/**  
+  Contém o *Makefile*, que automatiza o processo de compilação.
+  
+- **include/**  
+  Arquivos de cabeçalho (`.hpp`) com as definições de classes e interfaces, incluindo:
+  - `ast.hpp`
+  - `debug.hpp`
+  - `error.hpp`
+  - `interpreter.hpp`
+  - `lexer.hpp`
+  - `parser.hpp`
+  - `semantic.hpp`
+  - `symtable.hpp`
+  - `token.hpp`
+  
+- **src/**  
+  Implementações em C++ correspondentes aos arquivos de cabeçalho:
+  - `ast.cpp`
+  - `error.cpp`
+  - `interpreter.cpp`
+  - `lexer.cpp`
+  - `parser.cpp`
+  - `semantic.cpp`
+  - `token.cpp`
+  
+- **exemplos/**  
+  Exemplos de programas escritos em Minipar, que demonstram diversas funcionalidades da linguagem:
+  - `fib.minipar` (Fibonacci Recursivo)
+  - `fib2.minipar` (Fibonacci Iterativo)
+  - `mochila.minipar` (Problema da Mochila Binária)
+  - `nn.minipar` (Treinamento de Neurônio)
+  - `server.minipar` (Calculadora via Canal)
+  
+- **main.cpp**  
+  Arquivo principal que integra os componentes e inicia o interpretador.
+  
+- **README.md**  
+  Documentação e instruções gerais do projeto.
 
-- **Compilador**: GCC ou outro compatível com C++17.
-- **Bibliotecas**: STL (Standard Template Library), incluindo suporte a `pthread` para threads.
-- **Sistema Operacional**: Testado em Linux (Ubuntu), mas deve ser compatível com outros sistemas POSIX.
+---
 
-## Instalação
+## Instalação e Compilação
 
-1. **Clone o Repositório** (se aplicável):
+Para compilar e executar programas escritos em Minipar, siga os passos abaixo:
+
+1. **Pré-requisitos:**  
+   - Compilador C++ com suporte a C++17 (por exemplo, `g++`).
+   - Biblioteca padrão do C++ instalada.
+
+2. **Compilação:**  
+   No diretório `build/`, utilize o *Makefile*:
+   - **Compilação padrão:**  
+     ```bash
+     make run
+     ```  
+     Esse comando gera o executável `programa` usando o seguinte comando de compilação:
+     ```bash
+     g++ -g -o programa ../main.cpp ../src/lexer.cpp ../src/parser.cpp ../src/semantic.cpp ../src/token.cpp ../src/error.cpp ../src/ast.cpp ../src/interpreter.cpp -std=c++17 -fPIC
+     ```
+   - **Modo de Depuração:**  
+     ```bash
+     make debug
+     ```  
+     Essa opção adiciona a flag `-DDEBUG_MODE` para ativar logs de depuração:
+     ```bash
+     g++ -DDEBUG_MODE -g -o programa ../main.cpp ../src/lexer.cpp ../src/parser.cpp ../src/semantic.cpp ../src/token.cpp ../src/error.cpp ../src/ast.cpp ../src/interpreter.cpp -std=c++17 -fPIC
+     ```
+
+3. **Execução:**  
+   Após a compilação, execute o interpretador passando um arquivo fonte como argumento, por exemplo:
    ```bash
-   git clone <URL_DO_REPOSITORIO>
-   cd minipar
+   ./build/programa exemplos/fib.minipar
    ```
-   Ou copie os arquivos para um diretório local.
+   O interpretador processará o código, exibindo a saída ou mensagens de erro no console.
 
-2. **Compile o Projeto**:
-   ```bash
-   g++ -g -o programa main.cpp src/lexer.cpp src/parser.cpp src/semantic.cpp src/token.cpp src/error.cpp src/ast.cpp src/interpreter.cpp -std=c++17 -fPIC -pthread
-   ```
-   - `-g`: Inclui informações de depuração.
-   - `-std=c++17`: Usa o padrão C++17.
-   - `-pthread`: Habilita suporte a threads.
-   - `-fPIC`: Gera código independente de posição.
+---
 
-3. **Verifique o Executável**:
-   Após a compilação, você terá um executável chamado `programa` no diretório raiz.
+## Exemplos de Programas
 
-## Uso
+Os exemplos incluídos no projeto demonstram diversas funcionalidades do Minipar:
 
-### **Execução com Arquivo**
-Crie um arquivo de entrada (ex.: `tests/meu_codigo.minipar`) com o código na linguagem Minipar. Por exemplo:
-```
-x: number = 42
-print(x)
-i: number = 0
-while (i < 3) {
-    print(i)
-    i = i + 1
-}
-```
+1. **Problema da Mochila Binária (`exemplos/mochila.minipar`):**  
+   Utiliza array, laços `for` e funções para resolver o problema da mochila via programação dinâmica.
+   - **Saída:** `15`
 
-Execute:
-```bash
-./programa tests/meu_codigo.minipar
-```
+2. **Fibonacci Iterativo (`exemplos/fib.minipar`):**  
+   Calcula a sequência de Fibonacci de forma iterativa.
+   - **Saída:** `8` (Sequência: 0, 1, 1, 2, 3, 5, 8)
 
-**Saída Esperada**:
-```
-42
-0
-1
-2
-Execução concluída sem erros.
-```
+3. **Treinamento de Neurônio (`exemplos/nn.minipar`):**  
+   Implementa um perceptron simples com ajuste de pesos, iterando até atingir o valor desejado.
+   - **Saída parcial:** Exibe as iterações com ajustes de peso até o treinamento ser concluído.
 
-### **Execução Interativa**
-Execute sem argumentos para digitar o código manualmente:
-```bash
-./programa
-Digite o código fonte (termine com Ctrl+D ou Ctrl+Z):
-x: number = 10
-print(x)
-```
-Pressione `Ctrl+D` (Linux) ou `Ctrl+Z` (Windows).
+4. **Calculadora via Canal (`exemplos/server.minipar`):**  
+   Cria um servidor que processa expressões matemáticas enviadas por um cliente, evitando estruturas `else if` aninhadas.
+   - **Saída:** Inicializa um servidor que responde a expressões como `"2 + 3"`.
 
-**Saída Esperada**:
-```
-10
-Execução concluída sem erros.
-```
+5. **Fibonacci Recursivo (`exemplos/fib2.minipar`):**  
+   Utiliza recursão para calcular a sequência de Fibonacci.
+   - **Saída:** `8`
 
-### **Depuração**
-Use `gdb` para depurar:
-```bash
-gdb ./programa
-run tests/meu_codigo.minipar
-```
+---
 
-## Exemplos
+## Manual de Referência da Linguagem
 
-### **Fibonacci Iterativo**
-Arquivo: `tests/fib.minipar`
-```python
-n: number = 10
-a: number = 0
-b: number = 1
-i: number = 0
-print(a)
-print(b)
-while (i < n - 2) {
-    c: number = a + b
-    print(c)
-    a = b
-    b = c
-    i = i + 1
-}
+### 1. Convenções Léxicas
+
+- **Identificadores:**  
+  Iniciam com letras ou `_`, seguidos por letras, números ou `_` (ex.: `x`, `minha_variavel`).
+
+- **Palavras-chave:**  
+  Incluem `func`, `if`, `while`, `return`, `break`, `continue`, `par`, `seq`, `c_channel`, `s_channel`, `for`, entre outras.
+
+- **Comentários:**  
+  - Linha única: `# comentário`
+  - Multi-linha: `/* comentário */`
+
+- **Espaços e Quebras de Linha:**  
+  São geralmente ignorados, exceto para delimitar tokens.
+
+---
+
+### 2. Tipos de Dados
+
+Minipar suporta os seguintes tipos:
+- **number:** Números reais (ex.: `5`, `3.14`).
+- **string:** Cadeias de caracteres delimitadas por aspas (ex.: `"hello"`).
+- **bool:** Valores booleanos (`true`, `false`).
+- **void:** Tipo de retorno para funções que não retornam valor.
+- **mochila:** Coleções ordenadas de elementos do mesmo tipo (ex.: `x: array[10]`).
+
+---
+
+### 3. Estruturas e Comandos
+
+#### Declaração de Variáveis e Funções
+
+```go
+x : number = 42
+str : string = "texto"
+arr : array[5] = [1, 2, 3, 4, 5]
 ```
 
-### **Fibonacci Recursivo**
-Arquivo: `tests/fib2.minipar`
-```python
-func fib(n: number) -> number {
-    if (n <= 0) {
-        return 0
-    }
-    if (n == 1) {
-        return 1
-    }
-    return fib(n - 1) + fib(n - 2)
-}
-x: number = fib(6)
-print(x)
-```
+#### Estruturas de Controle
+
+- **Condicionais (`if/else`):**
+  ```go
+  if (x > 0) {
+      print("positivo")
+  } else {
+      print("negativo ou zero")
+  }
+  ```
+  *Nota:* Para condições múltiplas, utilize blocos aninhados:
+  ```go
+  if (operator == "+") {
+      result = result + valor_num
+  } else {
+      if (operator == "-") {
+          result = result - valor_num
+      } else {
+          print("outro caso")
+      }
+  }
+  ```
+
+- **Laços:**
+  - **While:**  
+    Utilizado para repetições com condição.
+  - **For:**  
+    Comumente usado em iterações com contadores.
+
+- **Comandos de Controle de Fluxo:**  
+  `break` e `continue` para manipulação de iterações.
+
+#### Estruturas de Paralelismo e Sequenciamento
+
+- **Paralelismo (`par`):**
+  ```go
+  par {
+      print("tarefa 1")
+      print("tarefa 2")
+  }
+  ```
+  Executa as instruções em threads separadas.
+
+- **Sequenciamento Explícito (`seq`):**
+  ```go
+  seq {
+      print("passo 1")
+      print("passo 2")
+  }
+  ```
+
+#### Comunicação via Canais
+
+- **CChannel (Canal Cliente):**
+  ```go
+  c_channel meu_canal { "localhost", 8080 }
+  ```
+- **SChannel (Canal Servidor):**
+  Exemplo presente em `exemplos/server.minipar`.
+
+---
+
+### 4. Expressões e Operadores
+
+#### Operadores Aritméticos
+`+`, `-`, `*`, `/`
+
+#### Operadores Relacionais
+`<`, `>`, `<=`, `>=`, `==`, `!=`
+
+#### Operadores Lógicos
+`&&` (AND), `||` (OR), `!` (NOT)
+
+#### Ordem de Precedência
+1. Operadores unários: `!`, `-`
+2. Multiplicação e divisão: `*`, `/`
+3. Adição e subtração: `+`, `-`
+4. Operadores relacionais: `<`, `>`, `<=`, `>=`
+5. Igualdade: `==`, `!=`
+6. Lógicos: `&&` e `||`
+7. Uso de parênteses para alterar a precedência.
+
+#### Chamadas de Função
+Exemplos em `exemplos/fib.minipar`, `exemplos/nn.minipar` e outros.
+
+---
+
+### 5. Biblioteca Padrão
+
+- **Entrada e Saída:**  
+  `print(valor)` para exibição de mensagens.
+
+- **Conversão de Tipos:**  
+  `to_number(str)` e `to_string(valor)`
+
+- **Manipulação de Strings:**  
+  `len(valor)`, `isalpha(str)` e `isnum(str)`
+
+---
