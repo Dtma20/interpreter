@@ -6,7 +6,7 @@
  * @brief Construtor do SemanticAnalyzer.
  *
  * Inicializa o analisador semântico e define a lista de funções padrão suportadas,
- * como "print", "input", "sleep", entre outras.
+ * como "print", "input", "sleep", "to_number", "to_string", "to_bool", "send", "close", "len", "isalpha" e "isnum".
  */
 SemanticAnalyzer::SemanticAnalyzer() {
     default_func_names = {"print", "input", "sleep", "to_number", "to_string", 
@@ -16,8 +16,9 @@ SemanticAnalyzer::SemanticAnalyzer() {
 /**
  * @brief Avalia um nó da AST e retorna o tipo resultante.
  *
- * Este método identifica o tipo do nó chamando a função de visita específica para cada
- * tipo de nó (Constant, ID, Access, Logical, Relational, Arithmetic, Unary ou Call).
+ * Este método determina o tipo de um nó da árvore sintática abstrata chamando
+ * a função de visita correspondente para cada tipo de nó (Constant, ID, Access, Logical,
+ * Relational, Arithmetic, Unary ou Call).
  *
  * @param node Ponteiro para o nó da AST.
  * @return String representando o tipo da expressão ou uma string vazia se o nó for nulo.
@@ -311,7 +312,7 @@ void SemanticAnalyzer::visit_SChannel(SChannel* node) {
     }
     int required_params = 0;
     for (const auto& param : func->getParams()) {
-        if (param.second.second == nullptr) {  
+        if (param.second.second == nullptr) {
             required_params++;
         }
     }
@@ -338,7 +339,7 @@ void SemanticAnalyzer::visit_SChannel(SChannel* node) {
  * @brief Avalia uma constante e retorna seu tipo.
  *
  * @param node Ponteiro para o nó Constant.
- * @return Tipo da constante.
+ * @return Tipo da constante encapsulado em std::optional.
  */
 std::optional<std::string> SemanticAnalyzer::visit_Constant(const Constant* node) const {
     return node->getType();
@@ -348,7 +349,7 @@ std::optional<std::string> SemanticAnalyzer::visit_Constant(const Constant* node
  * @brief Avalia um identificador e retorna seu tipo.
  *
  * @param node Ponteiro para o nó ID.
- * @return Tipo do identificador.
+ * @return Tipo do identificador encapsulado em std::optional.
  */
 std::optional<std::string> SemanticAnalyzer::visit_ID(const ID* node) const {
     return node->getType();
@@ -360,7 +361,7 @@ std::optional<std::string> SemanticAnalyzer::visit_ID(const ID* node) const {
  * Verifica se o acesso por índice é realizado em uma string.
  *
  * @param node Ponteiro para o nó Access.
- * @return Tipo do acesso.
+ * @return Tipo do acesso encapsulado em std::optional.
  * @throws SemanticError se o acesso não for feito em uma string.
  */
 std::optional<std::string> SemanticAnalyzer::visit_Access(const Access* node) const {
@@ -376,7 +377,7 @@ std::optional<std::string> SemanticAnalyzer::visit_Access(const Access* node) co
  * Verifica se ambos os operandos são do tipo BOOL.
  *
  * @param node Ponteiro para o nó Logical.
- * @return "BOOL" se a operação for válida.
+ * @return "BOOL" encapsulado em std::optional se a operação for válida.
  * @throws SemanticError se algum operando não for BOOL.
  */
 std::optional<std::string> SemanticAnalyzer::visit_Logical(const Logical* node) const {
@@ -392,11 +393,12 @@ std::optional<std::string> SemanticAnalyzer::visit_Logical(const Logical* node) 
 /**
  * @brief Avalia uma operação relacional e retorna "BOOL".
  *
- * Verifica se os operandos são compatíveis para comparação (mesmo tipo para "==" e "!=",
- * ou ambos NUMBER para outras comparações).
+ * Verifica se os operandos são compatíveis para comparação:
+ * - Para "==" e "!=", os operandos devem ser do mesmo tipo.
+ * - Para outros operadores, os operandos devem ser NUMBER.
  *
  * @param node Ponteiro para o nó Relational.
- * @return "BOOL" se os operandos forem compatíveis.
+ * @return "BOOL" encapsulado em std::optional se os operandos forem compatíveis.
  * @throws SemanticError se os operandos forem incompatíveis.
  */
 std::optional<std::string> SemanticAnalyzer::visit_Relational(const Relational* node) const {
@@ -419,11 +421,11 @@ std::optional<std::string> SemanticAnalyzer::visit_Relational(const Relational* 
 /**
  * @brief Avalia uma operação aritmética e retorna o tipo do operando.
  *
- * Para o operador de soma, permite apenas operandos do mesmo tipo (para concatenar strings ou somar números).
+ * Para o operador de soma, permite apenas operandos do mesmo tipo (permitindo concatenar strings ou somar números).
  * Para outros operadores, os operandos devem ser NUMBER.
  *
  * @param node Ponteiro para o nó Arithmetic.
- * @return Tipo dos operandos.
+ * @return Tipo dos operandos encapsulado em std::optional.
  * @throws SemanticError se os operandos forem incompatíveis.
  */
 std::optional<std::string> SemanticAnalyzer::visit_Arithmetic(const Arithmetic* node) const {
@@ -446,10 +448,10 @@ std::optional<std::string> SemanticAnalyzer::visit_Arithmetic(const Arithmetic* 
 /**
  * @brief Avalia uma operação unária e retorna o tipo do operando.
  *
- * Verifica se o operador unário '-' é aplicado a um NUMBER e se '!' é aplicado a um BOOL.
+ * Verifica se o operador unário '-' é aplicado a um NUMBER e se o '!' é aplicado a um BOOL.
  *
  * @param node Ponteiro para o nó Unary.
- * @return Tipo do operando.
+ * @return Tipo do operando encapsulado em std::optional.
  * @throws SemanticError se o tipo do operando não for compatível com o operador.
  */
 std::optional<std::string> SemanticAnalyzer::visit_Unary(const Unary* node) const {
@@ -487,7 +489,7 @@ void SemanticAnalyzer::visit_block(const Body& block) {
  * lança um erro semântico.
  *
  * @param node Ponteiro para o nó Call.
- * @return Tipo de retorno da função.
+ * @return Tipo de retorno da função encapsulado em std::optional.
  * @throws SemanticError se a função não estiver declarada ou se os argumentos forem insuficientes.
  */
 std::optional<std::string> SemanticAnalyzer::visit_Call(const Call* node) const {
@@ -518,6 +520,15 @@ std::optional<std::string> SemanticAnalyzer::visit_Call(const Call* node) const 
     return function->getReturnType();
 }
 
+/**
+ * @brief Avalia um array e retorna seu tipo.
+ *
+ * Verifica se todos os elementos do array são do mesmo tipo.
+ *
+ * @param node Ponteiro para o nó Array.
+ * @return "ARRAY" encapsulado em std::optional se todos os elementos tiverem o mesmo tipo.
+ * @throws SemanticError se os elementos do array forem de tipos diferentes.
+ */
 std::optional<std::string> SemanticAnalyzer::visit_Array(const Array* node) const {
     std::string element_type = "";
     for (const auto& element : node->getElements()) {

@@ -3,8 +3,9 @@
 /**
  * @brief Representa uma expressão na árvore sintática (AST).
  *
- * A classe Expression é a classe base para todas as expressões, contendo
- * o tipo da expressão e o token associado.
+ * A classe Expression é a classe base para todas as expressões.
+ * Ela armazena o tipo da expressão (por exemplo, "NUMBER", "STRING", etc.)
+ * e o token associado (que contém informações como valor e posição).
  */
 Expression::Expression(const std::string &type, const Token &token)
     : type(type), token(token) {}
@@ -39,7 +40,7 @@ std::string Expression::getName() const
 /**
  * @brief Construtor da classe Constant.
  *
- * Representa uma constante na AST.
+ * Representa uma constante na AST, como números, strings ou valores booleanos.
  *
  * @param type Tipo da constante.
  * @param token Token associado à constante.
@@ -50,7 +51,7 @@ Constant::Constant(const std::string &type, const Token &token)
 /**
  * @brief Construtor da classe ID (identificador).
  *
- * Representa um identificador, podendo indicar se é uma declaração.
+ * Representa um identificador na AST. Pode ser utilizado para declarações ou referências.
  *
  * @param type Tipo do identificador.
  * @param token Token associado ao identificador.
@@ -71,12 +72,12 @@ bool ID::isDecl() const
 /**
  * @brief Construtor da classe Access.
  *
- * Representa o acesso a um identificador ou à sua expressão associada.
+ * Representa o acesso a um elemento de um identificador, por exemplo, acesso a um índice de array.
  *
  * @param type Tipo do acesso.
  * @param token Token associado ao acesso.
- * @param id Ponteiro único para o identificador.
- * @param expr Ponteiro único para a expressão (por exemplo, acesso a um campo).
+ * @param id Ponteiro único para o identificador base.
+ * @param expr Ponteiro único para a expressão que indica o índice ou campo de acesso.
  */
 Access::Access(const std::string &type, const Token &token, std::unique_ptr<ID> id, std::unique_ptr<Expression> expr)
     : Expression(type, token), id(std::move(id)), expr(std::move(expr)) {}
@@ -102,12 +103,12 @@ Expression *Access::getExpr() const
 /**
  * @brief Construtor da classe Logical.
  *
- * Representa uma operação lógica (ex.: AND, OR) na AST.
+ * Representa uma operação lógica (como AND ou OR) na AST.
  *
  * @param type Tipo da operação lógica.
  * @param token Token associado à operação.
- * @param left Ponteiro único para a expressão da esquerda.
- * @param right Ponteiro único para a expressão da direita.
+ * @param left Ponteiro único para a expressão do lado esquerdo.
+ * @param right Ponteiro único para a expressão do lado direito.
  */
 Logical::Logical(const std::string &type, const Token &token, std::unique_ptr<Expression> left, std::unique_ptr<Expression> right)
     : Expression(type, token), left(std::move(left)), right(std::move(right)) {}
@@ -133,12 +134,12 @@ Expression *Logical::getRight() const
 /**
  * @brief Construtor da classe Relational.
  *
- * Representa uma operação relacional (ex.: ==, <, >) na AST.
+ * Representa uma operação relacional (por exemplo, ==, <, >) na AST.
  *
  * @param type Tipo da operação relacional.
  * @param token Token associado à operação.
- * @param left Ponteiro único para a expressão da esquerda.
- * @param right Ponteiro único para a expressão da direita.
+ * @param left Ponteiro único para a expressão do lado esquerdo.
+ * @param right Ponteiro único para a expressão do lado direito.
  */
 Relational::Relational(const std::string &type, const Token &token, std::unique_ptr<Expression> left, std::unique_ptr<Expression> right)
     : Expression(type, token), left(std::move(left)), right(std::move(right)) {}
@@ -164,12 +165,12 @@ Expression *Relational::getRight() const
 /**
  * @brief Construtor da classe Arithmetic.
  *
- * Representa uma operação aritmética (ex.: +, -, *, /) na AST.
+ * Representa uma operação aritmética (como +, -, *, /) na AST.
  *
  * @param type Tipo da operação aritmética.
  * @param token Token associado à operação.
- * @param left Ponteiro único para a expressão da esquerda.
- * @param right Ponteiro único para a expressão da direita.
+ * @param left Ponteiro único para a expressão do lado esquerdo.
+ * @param right Ponteiro único para a expressão do lado direito.
  */
 Arithmetic::Arithmetic(const std::string &type, const Token &token, std::unique_ptr<Expression> left, std::unique_ptr<Expression> right)
     : Expression(type, token), left(std::move(left)), right(std::move(right)) {}
@@ -195,11 +196,11 @@ Expression *Arithmetic::getRight() const
 /**
  * @brief Construtor da classe Unary.
  *
- * Representa uma operação unária (ex.: -, !) na AST.
+ * Representa uma operação unária (por exemplo, negação - ou lógica !) na AST.
  *
  * @param type Tipo da operação unária.
  * @param token Token associado à operação.
- * @param expr Ponteiro único para a expressão.
+ * @param expr Ponteiro único para a expressão à qual o operador unário se aplica.
  */
 Unary::Unary(const std::string &type, const Token &token, std::unique_ptr<Expression> expr)
     : Expression(type, token), expr(std::move(expr)) {}
@@ -221,7 +222,7 @@ Expression *Unary::getExpr() const
  * @param type Tipo da chamada.
  * @param token Token associado à chamada.
  * @param id Ponteiro único para o identificador da função.
- * @param args Lista de argumentos da função.
+ * @param args Lista de argumentos passados para a função.
  * @param oper Operador associado à chamada (se aplicável).
  */
 Call::Call(const std::string &type, const Token &token, std::unique_ptr<ID> id, Arguments args, const std::string &oper)
@@ -238,7 +239,7 @@ ID *Call::getId() const
 
 /**
  * @brief Obtém os argumentos passados para a função.
- * @return Referência constante para os argumentos.
+ * @return Referência constante para a lista de argumentos.
  */
 const Arguments &Call::getArgs() const
 {
@@ -257,7 +258,7 @@ std::string Call::getOper() const
 /**
  * @brief Construtor da classe Module.
  *
- * Representa um módulo, contendo um corpo (lista de instruções).
+ * Representa um módulo (arquivo ou unidade de código) que contém um corpo (lista de statements).
  *
  * @param stmts Ponteiro único para o corpo do módulo.
  */
@@ -265,7 +266,7 @@ Module::Module(std::unique_ptr<Body> stmts)
     : stmts(std::move(stmts)) {}
 
 /**
- * @brief Obtém os enunciados (statements) do módulo.
+ * @brief Obtém os statements do módulo.
  * @return Referência constante para o corpo do módulo.
  */
 const Body &Module::getStmts() const
@@ -305,7 +306,7 @@ Expression *Assign::getRight() const
 /**
  * @brief Construtor da classe Return.
  *
- * Representa uma instrução de retorno de uma função.
+ * Representa a instrução de retorno de uma função na AST.
  *
  * @param expr Ponteiro único para a expressão a ser retornada.
  */
@@ -324,26 +325,27 @@ Expression *Return::getExpr() const
 /**
  * @brief Construtor da classe Break.
  *
- * Representa uma instrução de interrupção de fluxo (break).
+ * Representa a instrução de interrupção (break) na AST.
  */
 Break::Break() {}
 
 /**
  * @brief Construtor da classe Continue.
  *
- * Representa uma instrução para continuar a iteração em um loop.
+ * Representa a instrução de continuação (continue) em loops na AST.
  */
 Continue::Continue() {}
 
 /**
  * @brief Construtor da classe FuncDef.
  *
- * Representa a definição de uma função.
+ * Representa a definição de uma função na AST, contendo o nome, tipo de retorno,
+ * parâmetros e o corpo (lista de instruções) da função.
  *
  * @param name Nome da função.
  * @param return_type Tipo de retorno da função.
- * @param params Conjunto de parâmetros da função.
- * @param body Corpo da função (lista de instruções).
+ * @param params Mapa de parâmetros da função (nome, tipo e valor padrão opcional).
+ * @param body Corpo da função (lista de statements).
  */
 FuncDef::FuncDef(const std::string &name, const std::string &return_type, Parameters &&params, std::unique_ptr<Body> body)
     : name(name), return_type(return_type), params(std::move(params)), body(std::move(body)) {}
@@ -362,12 +364,12 @@ std::string FuncDef::getReturnType() const { return return_type; }
 
 /**
  * @brief Obtém os parâmetros da função.
- * @return Referência constante para os parâmetros.
+ * @return Referência constante para o mapa de parâmetros.
  */
 const Parameters &FuncDef::getParams() const { return params; }
 
 /**
- * @brief Obtém o corpo (lista de instruções) da função.
+ * @brief Obtém o corpo da função (lista de statements).
  * @return Referência constante para o corpo da função.
  */
 const Body &FuncDef::getBody() const { return *body; }
@@ -404,7 +406,7 @@ const Body &If::getBody() const
 
 /**
  * @brief Obtém o corpo da instrução else, se existir.
- * @return Ponteiro para o corpo do else ou nullptr caso não exista.
+ * @return Ponteiro para o corpo do else ou nullptr se não existir.
  */
 const Body *If::getElseStmt() const
 {
@@ -414,7 +416,7 @@ const Body *If::getElseStmt() const
 /**
  * @brief Construtor da classe While.
  *
- * Representa uma estrutura de repetição (while) na AST.
+ * Representa um laço de repetição (while) na AST.
  *
  * @param condition Expressão condicional do loop.
  * @param body Corpo do loop.
@@ -443,7 +445,7 @@ const Body &While::getBody() const
 /**
  * @brief Construtor da classe Par.
  *
- * Representa um bloco de código encapsulado (por exemplo, entre parênteses).
+ * Representa um bloco de código encapsulado (por exemplo, para execução paralela).
  *
  * @param body Corpo do bloco.
  */
@@ -452,7 +454,7 @@ Par::Par(std::unique_ptr<Body> body)
 
 /**
  * @brief Obtém o corpo do bloco encapsulado.
- * @return Referência constante para o corpo.
+ * @return Referência constante para o corpo do bloco.
  */
 const Body &Par::getBody() const
 {
@@ -471,7 +473,7 @@ Seq::Seq(std::unique_ptr<Body> body)
 
 /**
  * @brief Obtém o corpo da sequência de instruções.
- * @return Referência constante para o corpo.
+ * @return Referência constante para o corpo da sequência.
  */
 const Body &Seq::getBody() const
 {
@@ -481,11 +483,11 @@ const Body &Seq::getBody() const
 /**
  * @brief Construtor da classe Channel.
  *
- * Representa um canal de comunicação, contendo nome, endereço local e porta.
+ * Representa um canal de comunicação, contendo o nome, endereço local e porta.
  *
  * @param name Nome do canal.
- * @param localhost Expressão que representa o endereço local.
- * @param port Expressão que representa a porta.
+ * @param localhost Ponteiro único para a expressão que representa o endereço local.
+ * @param port Ponteiro único para a expressão que representa a porta.
  */
 Channel::Channel(const std::string &name, std::unique_ptr<Expression> localhost, std::unique_ptr<Expression> port)
     : name(name), _localhost(std::move(localhost)), _port(std::move(port)) {}
@@ -500,7 +502,7 @@ std::string Channel::getName() const
 }
 
 /**
- * @brief Obtém o endereço local do canal, utilizando o valor do token.
+ * @brief Obtém o endereço local do canal a partir do token da expressão.
  * @return Uma string com o endereço local.
  */
 std::string Channel::getLocalhost() const
@@ -509,7 +511,7 @@ std::string Channel::getLocalhost() const
 }
 
 /**
- * @brief Obtém a porta do canal, utilizando o valor do token.
+ * @brief Obtém a porta do canal a partir do token da expressão.
  * @return Uma string com a porta.
  */
 std::string Channel::getPort() const
@@ -542,10 +544,10 @@ Expression *Channel::getPortNode() const
  * possui o nome de uma função associada e uma descrição.
  *
  * @param name Nome do canal.
- * @param localhost Expressão que representa o endereço local.
- * @param port Expressão que representa a porta.
+ * @param localhost Ponteiro único para a expressão do endereço local.
+ * @param port Ponteiro único para a expressão da porta.
  * @param func_name Nome da função associada ao canal.
- * @param description Expressão que representa a descrição do canal.
+ * @param description Ponteiro único para a expressão que descreve o canal.
  */
 SChannel::SChannel(const std::string &name, std::unique_ptr<Expression> localhost, std::unique_ptr<Expression> port,
                    const std::string &func_name, std::unique_ptr<Expression> description)
@@ -561,8 +563,8 @@ std::string SChannel::getFuncName() const
 }
 
 /**
- * @brief Obtém a descrição do canal.
- * @return Ponteiro para a expressão que descreve o canal.
+ * @brief Obtém a descrição do canal de serviço.
+ * @return Ponteiro para a expressão que representa a descrição.
  */
 Expression *SChannel::getDescription() const
 {
@@ -572,11 +574,11 @@ Expression *SChannel::getDescription() const
 /**
  * @brief Construtor da classe CChannel.
  *
- * Representa um canal de cliente, sem atributos adicionais aos de Channel.
+ * Representa um canal de cliente, que utiliza apenas os atributos herdados de Channel.
  *
  * @param name Nome do canal.
- * @param localhost Expressão que representa o endereço local.
- * @param port Expressão que representa a porta.
+ * @param localhost Ponteiro único para a expressão do endereço local.
+ * @param port Ponteiro único para a expressão da porta.
  */
 CChannel::CChannel(const std::string &name, std::unique_ptr<Expression> localhost, std::unique_ptr<Expression> port)
     : Channel(name, std::move(localhost), std::move(port)) {}
