@@ -1,7 +1,4 @@
-if (0 > 1) {
-    print("Primeiro caso")
-} else if (2 > 1) {
-    print("Segundo caso")
-} else {
-    print("Caso padrão")
-}
+i: number = 10
+print(i)
+i++
+print(i)

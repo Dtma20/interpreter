@@ -7,15 +7,15 @@ func max(a: number, b: number) -> number {
 
 n : number = 3
 w : number = 10
-
 dp : array[w + 1]
 peso : array[n] = [2, 3, 4]
 valor : array[n] = [4, 5, 6]
 
-for (i : number = 0; i < n; i = i + 1) {
-    for (j : number = w; j >= peso[i]; j = j - 1) {
+for (i: number = 0; i < n; i++) {
+    for (j : number = w; j >= peso[i]; --j) {
         dp[j] = max(dp[j], dp[j - peso[i]] + valor[i])
     }
 }
 
+dp[w]++
 print(dp[w])

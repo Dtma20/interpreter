@@ -270,6 +270,9 @@ private:
 /**
  * @brief Representa uma operação unária (ex.: -, !) na AST.
  */
+/**
+ * @brief Representa uma operação unária (ex.: -, !) na AST.
+ */
 class Unary : public Expression
 {
 public:
@@ -278,19 +281,29 @@ public:
      * @param type Tipo da operação.
      * @param token Token representando o operador unário.
      * @param expr Ponteiro único para o operando.
+     * @param isPostfix Indica se o operador é pós-fixado (true para x++ ou x--; false para ++x, --x, -, !).
      */
-    Unary(const std::string &type, const Token &token, std::unique_ptr<Expression> expr);
+    Unary(const std::string &type, const Token &token, std::unique_ptr<Expression> expr, bool isPostfix = false);
 
     /**
      * @brief Obtém o operando da operação unária.
      * @return Ponteiro para a expressão.
      */
     Expression *getExpr() const;
+
+    /**
+     * @brief Verifica se o operador é pós-fixado.
+     * @return true se o operador é pós-fixado (ex.: x++ ou x--); false caso contrário.
+     */
+    bool isPostfix() const;
+
     std::vector<Node *> getAttributes() override { return {}; }
 
 private:
     std::unique_ptr<Expression> expr; ///< Operando.
+    bool m_isPostfix;                 ///< Indica se o operador é pós-fixado.
 };
+
 
 /**
  * @brief Representa uma chamada de função na AST.

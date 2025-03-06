@@ -70,7 +70,9 @@ const std::vector<std::pair<std::string, std::string>> TOKEN_PATTERNS = {
     {"NEWLINE", "\n"},
     {"WHITESPACE", "\\s+"},
     {"FOR", "for"},
-    {"OTHER", "."},
+    {"INC", "\\+\\+"},
+    {"DEC", "--"},
+    {"OTHER", "."}
 };
 
 /**
@@ -101,7 +103,7 @@ const std::unordered_map<std::string, std::string> DEFAULT_FUNCTION_NAMES = {
     {"close", "VOID"},
     {"len", "NUMBER"},
     {"isalpha", "BOOL"},
-    {"isnum", "BOOL"}
+    {"isnum", "BOOL"}, 
 };
 
 /**

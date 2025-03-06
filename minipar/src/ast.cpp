@@ -193,26 +193,39 @@ Expression *Arithmetic::getRight() const
     return right.get();
 }
 
-/**
- * @brief Construtor da classe Unary.
- *
- * Representa uma operação unária (por exemplo, negação - ou lógica !) na AST.
- *
- * @param type Tipo da operação unária.
- * @param token Token associado à operação.
- * @param expr Ponteiro único para a expressão à qual o operador unário se aplica.
- */
-Unary::Unary(const std::string &type, const Token &token, std::unique_ptr<Expression> expr)
-    : Expression(type, token), expr(std::move(expr)) {}
+#include "../include/ast.hpp"
 
 /**
- * @brief Obtém a expressão associada à operação unária.
+ * @brief Construtor para uma operação unária.
+ *
+ * @param type Tipo da operação.
+ * @param token Token representando o operador unário.
+ * @param expr Ponteiro único para o operando.
+ * @param isPostfix Indica se o operador é pós-fixado.
+ */
+Unary::Unary(const std::string &type, const Token &token, std::unique_ptr<Expression> expr, bool isPostfix)
+    : Expression(type, token), expr(std::move(expr)), m_isPostfix(isPostfix) {}
+
+/**
+ * @brief Obtém o operando da operação unária.
+ * 
  * @return Ponteiro para a expressão.
  */
 Expression *Unary::getExpr() const
 {
     return expr.get();
 }
+
+/**
+ * @brief Verifica se o operador é pós-fixado.
+ * 
+ * @return true se o operador é pós-fixado (ex.: x++ ou x--); false caso contrário.
+ */
+bool Unary::isPostfix() const
+{
+    return m_isPostfix;
+}
+
 
 /**
  * @brief Construtor da classe Call.
