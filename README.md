@@ -1,7 +1,3 @@
-Para atualizar o README do projeto "Minipar" de acordo com as sugestões fornecidas, seguem as revisões e expansões necessárias. Abaixo está a versão atualizada do README, incorporando todas as melhorias de forma clara, precisa e alinhada com as funcionalidades da linguagem. As seções foram ajustadas conforme identificado, com correções, adições e exemplos expandidos.
-
----
-
 # Minipar: Linguagem de Programação Minimalista
 
 Minipar é uma linguagem de programação minimalista desenvolvida para oferecer suporte a estruturas básicas de controle, paralelismo e comunicação por canais. Com uma sintaxe simples e expressiva, o projeto inclui um analisador léxico, sintático, semântico e um interpretador escrito em C++.
