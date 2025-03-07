@@ -304,7 +304,6 @@ private:
     bool m_isPostfix;                 // Indica se o operador é pós-fixado.
 };
 
-
 /**
  * @brief Representa uma chamada de função na AST.
  */
@@ -748,22 +747,24 @@ public:
     }
 };
 
-class ArrayDecl : public Node {
-    public:
-        ArrayDecl(const std::string& name, std::unique_ptr<Expression> size)
-            : name(name), size(std::move(size)) {}
-    
-        std::string getName() const { return name; }
-        Expression* getSizeExpr() const { return size.get(); }
-    
-        // Implementação da função virtual pura
-        std::vector<Node*> getAttributes() override {
-            return {size.get()}; // Retorna a expressão de tamanho como atributo
-        }
-    
-    private:
-        std::string name;
-        std::unique_ptr<Expression> size;
-    };
+class ArrayDecl : public Node
+{
+public:
+    ArrayDecl(const std::string &name, std::unique_ptr<Expression> size)
+        : name(name), size(std::move(size)) {}
+
+    std::string getName() const { return name; }
+    Expression *getSizeExpr() const { return size.get(); }
+
+    // Implementação da função virtual pura
+    std::vector<Node *> getAttributes() override
+    {
+        return {size.get()}; // Retorna a expressão de tamanho como atributo
+    }
+
+private:
+    std::string name;
+    std::unique_ptr<Expression> size;
+};
 
 #endif // AST_HPP

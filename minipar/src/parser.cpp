@@ -949,7 +949,7 @@ std::unique_ptr<Expression> Parser::unary()
     {
         Token token = lookahead;
         match("INC");
-        auto expr = unary(); 
+        auto expr = unary();
         return std::make_unique<Unary>("NUM", token, std::move(expr));
     }
     else if (lookahead.getTag() == "DEC")

@@ -208,7 +208,7 @@ Unary::Unary(const std::string &type, const Token &token, std::unique_ptr<Expres
 
 /**
  * @brief Obtém o operando da operação unária.
- * 
+ *
  * @return Ponteiro para a expressão.
  */
 Expression *Unary::getExpr() const
@@ -218,14 +218,13 @@ Expression *Unary::getExpr() const
 
 /**
  * @brief Verifica se o operador é pós-fixado.
- * 
+ *
  * @return true se o operador é pós-fixado (ex.: x++ ou x--); false caso contrário.
  */
 bool Unary::isPostfix() const
 {
     return m_isPostfix;
 }
-
 
 /**
  * @brief Construtor da classe Call.
