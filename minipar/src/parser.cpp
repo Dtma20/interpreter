@@ -166,7 +166,7 @@ std::unique_ptr<Node> Parser::stmt()
         std::string id_name = lookahead.getValue();
         match("ID");
         auto id = std::make_unique<ID>("", Token("ID", id_name));
-        auto unary = std::make_unique<Unary>("NUMBER", token, std::move(id), false); // false indica pré-fixado
+        auto unary = std::make_unique<Unary>("NUM", token, std::move(id), false); // false indica pré-fixado
         skipWhitespace();
         return unary;
     }
@@ -192,10 +192,10 @@ std::unique_ptr<Node> Parser::stmt()
             {
                 Token token = lookahead;
                 match(lookahead.getTag());
-                auto access = std::make_unique<Access>("NUMBER", Token("ACCESS", "[]"),
+                auto access = std::make_unique<Access>("NUM", Token("ACCESS", "[]"),
                                                        std::make_unique<ID>("", Token("ID", id_name)),
                                                        std::move(index));
-                auto unary = std::make_unique<Unary>("NUMBER", token, std::move(access), true);
+                auto unary = std::make_unique<Unary>("NUM", token, std::move(access), true);
                 skipWhitespace();
                 return unary;
             }
@@ -206,7 +206,7 @@ std::unique_ptr<Node> Parser::stmt()
             skipWhitespace();
             auto right = arithmetic();
             skipWhitespace();
-            auto access = std::make_unique<Access>("NUMBER", Token("ACCESS", "[]"),
+            auto access = std::make_unique<Access>("NUM", Token("ACCESS", "[]"),
                                                    std::make_unique<ID>("", Token("ID", id_name)),
                                                    std::move(index));
             return std::make_unique<Assign>(std::move(access), std::move(right));
@@ -217,7 +217,7 @@ std::unique_ptr<Node> Parser::stmt()
             Token token = lookahead;
             match(lookahead.getTag());
             auto id = std::make_unique<ID>("", Token("ID", id_name));
-            auto unary = std::make_unique<Unary>("NUMBER", token, std::move(id), true);
+            auto unary = std::make_unique<Unary>("NUM", token, std::move(id), true);
             skipWhitespace();
             return unary;
         }
@@ -894,7 +894,7 @@ std::unique_ptr<Expression> Parser::arithmetic()
         std::string op = lookahead.getTag();
         match(op);
         auto right = term();
-        left = std::make_unique<Arithmetic>("NUMBER", Token(op, op), std::move(left), std::move(right));
+        left = std::make_unique<Arithmetic>("NUM", Token(op, op), std::move(left), std::move(right));
     }
     return left;
 }
@@ -915,7 +915,7 @@ std::unique_ptr<Expression> Parser::term()
         if (match("*") || match("/"))
         {
             auto right = unary();
-            left = std::make_unique<Arithmetic>("NUMBER", token, std::move(left), std::move(right));
+            left = std::make_unique<Arithmetic>("NUM", token, std::move(left), std::move(right));
         }
     }
     return left;
@@ -936,7 +936,7 @@ std::unique_ptr<Expression> Parser::unary()
         Token token = lookahead;
         match("-");
         auto expr = unary();
-        return std::make_unique<Unary>("NUMBER", token, std::move(expr));
+        return std::make_unique<Unary>("NUM", token, std::move(expr));
     }
     else if (lookahead.getTag() == "!")
     {
@@ -945,19 +945,19 @@ std::unique_ptr<Expression> Parser::unary()
         auto expr = unary();
         return std::make_unique<Unary>("BOOL", token, std::move(expr));
     }
-    else if (lookahead.getTag() == "INC") // Novo: ++ pré-fixado
+    else if (lookahead.getTag() == "INC")
     {
         Token token = lookahead;
         match("INC");
-        auto expr = unary(); // Espera um identificador (ex.: ++x)
-        return std::make_unique<Unary>("NUMBER", token, std::move(expr));
+        auto expr = unary(); 
+        return std::make_unique<Unary>("NUM", token, std::move(expr));
     }
-    else if (lookahead.getTag() == "DEC") // Novo: -- pré-fixado
+    else if (lookahead.getTag() == "DEC")
     {
         Token token = lookahead;
         match("DEC");
         auto expr = unary();
-        return std::make_unique<Unary>("NUMBER", token, std::move(expr));
+        return std::make_unique<Unary>("NUM", token, std::move(expr));
     }
     return primary();
 }
@@ -987,11 +987,11 @@ Token Parser::peekNext()
  */
 std::unique_ptr<Expression> Parser::primary()
 {
-    if (lookahead.getTag() == "NUMBER")
+    if (lookahead.getTag() == "NUM")
     {
         std::string value = lookahead.getValue();
-        match("NUMBER");
-        return std::make_unique<Constant>("NUMBER", Token("NUMBER", value));
+        match("NUM");
+        return std::make_unique<Constant>("NUM", Token("NUM", value));
     }
     else if (lookahead.getTag() == "STRING")
     {
@@ -1049,7 +1049,7 @@ std::unique_ptr<Expression> Parser::primary()
                 auto access = std::make_unique<Access>("STRING", Token("ACCESS", "[]"),
                                                        std::make_unique<ID>("", Token("ID", name)),
                                                        std::move(index));
-                return std::make_unique<Unary>("NUMBER", token, std::move(access), true); // true para pós-fixado
+                return std::make_unique<Unary>("NUM", token, std::move(access), true); // true para pós-fixado
             }
             return std::make_unique<Access>("STRING", Token("ACCESS", "[]"),
                                             std::make_unique<ID>("", Token("ID", name)),
@@ -1060,14 +1060,14 @@ std::unique_ptr<Expression> Parser::primary()
             Token token = lookahead;
             match("INC");
             auto id = std::make_unique<ID>("", Token("ID", name));
-            return std::make_unique<Unary>("NUMBER", token, std::move(id), true);
+            return std::make_unique<Unary>("NUM", token, std::move(id), true);
         }
         else if (lookahead.getTag() == "DEC") // Novo: x--
         {
             Token token = lookahead;
             match("DEC");
             auto id = std::make_unique<ID>("", Token("ID", name));
-            return std::make_unique<Unary>("NUMBER", token, std::move(id), true);
+            return std::make_unique<Unary>("NUM", token, std::move(id), true);
         }
         return std::make_unique<ID>("", Token("ID", name));
     }

@@ -48,7 +48,7 @@ std::string Token::toString() const { return "{{" + value + ", " + tag + "}}"; }
  */
 const std::vector<std::pair<std::string, std::string>> TOKEN_PATTERNS = {
     {"NAME", "[A-Za-z_][A-Za-z0-9_]*"},
-    {"NUMBER", "\\b\\d+\\.\\d+|\\.\\d+|\\d+\\b"},
+    {"NUM", "\\b\\d+\\.\\d+|\\.\\d+|\\d+\\b"},
     {"RARROW", "->"},
     {"STRING", "\"(?:[^\"]*)\""},
     {"SCOMMENT", "#.*"},

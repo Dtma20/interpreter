@@ -82,8 +82,8 @@ public:
     std::string getName() const;
 
 protected:
-    std::string type; ///< Tipo da expressão.
-    Token token;      ///< Token associado à expressão.
+    std::string type; // Tipo da expressão.
+    Token token;      // Token associado à expressão.
 };
 
 /**
@@ -132,7 +132,7 @@ public:
     std::vector<Node *> getAttributes() override { return {}; }
 
 private:
-    bool decl; ///< Indica se o identificador é uma declaração.
+    bool decl; // Indica se o identificador é uma declaração.
 };
 
 /**
@@ -164,8 +164,8 @@ public:
     std::vector<Node *> getAttributes() override { return {}; }
 
 private:
-    std::unique_ptr<ID> id;           ///< Identificador base.
-    std::unique_ptr<Expression> expr; ///< Expressão de índice.
+    std::unique_ptr<ID> id;           // Identificador base.
+    std::unique_ptr<Expression> expr; // Expressão de índice.
 };
 
 /**
@@ -197,8 +197,8 @@ public:
     std::vector<Node *> getAttributes() override { return {}; }
 
 private:
-    std::unique_ptr<Expression> left;  ///< Operando esquerdo.
-    std::unique_ptr<Expression> right; ///< Operando direito.
+    std::unique_ptr<Expression> left;  // Operando esquerdo.
+    std::unique_ptr<Expression> right; // Operando direito.
 };
 
 /**
@@ -230,8 +230,8 @@ public:
     std::vector<Node *> getAttributes() override { return {}; }
 
 private:
-    std::unique_ptr<Expression> left;  ///< Operando esquerdo.
-    std::unique_ptr<Expression> right; ///< Operando direito.
+    std::unique_ptr<Expression> left;  // Operando esquerdo.
+    std::unique_ptr<Expression> right; // Operando direito.
 };
 
 /**
@@ -263,8 +263,8 @@ public:
     std::vector<Node *> getAttributes() override { return {}; }
 
 private:
-    std::unique_ptr<Expression> left;  ///< Operando esquerdo.
-    std::unique_ptr<Expression> right; ///< Operando direito.
+    std::unique_ptr<Expression> left;  // Operando esquerdo.
+    std::unique_ptr<Expression> right; // Operando direito.
 };
 
 /**
@@ -300,8 +300,8 @@ public:
     std::vector<Node *> getAttributes() override { return {}; }
 
 private:
-    std::unique_ptr<Expression> expr; ///< Operando.
-    bool m_isPostfix;                 ///< Indica se o operador é pós-fixado.
+    std::unique_ptr<Expression> expr; // Operando.
+    bool m_isPostfix;                 // Indica se o operador é pós-fixado.
 };
 
 
@@ -341,9 +341,9 @@ public:
     std::vector<Node *> getAttributes() override { return {}; }
 
 private:
-    std::unique_ptr<ID> id; ///< Identificador da função.
-    Arguments args;         ///< Lista de argumentos.
-    std::string oper;       ///< Operador ou nome.
+    std::unique_ptr<ID> id; // Identificador da função.
+    Arguments args;         // Lista de argumentos.
+    std::string oper;       // Operador ou nome.
 };
 
 // ======================================================================
@@ -372,7 +372,7 @@ public:
     std::vector<Node *> getAttributes() override { return {}; }
 
 private:
-    std::unique_ptr<Body> stmts; ///< Corpo do módulo.
+    std::unique_ptr<Body> stmts; // Corpo do módulo.
 };
 
 /**
@@ -402,8 +402,8 @@ public:
     std::vector<Node *> getAttributes() override { return {}; }
 
 private:
-    std::unique_ptr<Expression> left;  ///< Expressão do lado esquerdo.
-    std::unique_ptr<Expression> right; ///< Expressão do lado direito.
+    std::unique_ptr<Expression> left;  // Expressão do lado esquerdo.
+    std::unique_ptr<Expression> right; // Expressão do lado direito.
 };
 
 /**
@@ -426,7 +426,7 @@ public:
     std::vector<Node *> getAttributes() override { return {}; }
 
 private:
-    std::unique_ptr<Expression> expr; ///< Expressão a ser retornada.
+    std::unique_ptr<Expression> expr; // Expressão a ser retornada.
 };
 
 /**
@@ -496,10 +496,10 @@ public:
     std::vector<Node *> getAttributes() override { return {}; }
 
 private:
-    std::string name;           ///< Nome da função.
-    std::string return_type;    ///< Tipo de retorno.
-    Parameters params;          ///< Parâmetros da função.
-    std::unique_ptr<Body> body; ///< Corpo da função.
+    std::string name;           // Nome da função.
+    std::string return_type;    // Tipo de retorno.
+    Parameters params;          // Parâmetros da função.
+    std::unique_ptr<Body> body; // Corpo da função.
 };
 
 /**
@@ -536,9 +536,9 @@ public:
     std::vector<Node *> getAttributes() override { return {}; }
 
 private:
-    std::unique_ptr<Expression> condition; ///< Expressão condicional.
-    std::unique_ptr<Body> body;            ///< Corpo do if.
-    std::unique_ptr<Body> else_stmt;       ///< Corpo do else (opcional).
+    std::unique_ptr<Expression> condition; // Expressão condicional.
+    std::unique_ptr<Body> body;            // Corpo do if.
+    std::unique_ptr<Body> else_stmt;       // Corpo do else (opcional).
 };
 
 /**
@@ -568,8 +568,8 @@ public:
     std::vector<Node *> getAttributes() override { return {}; }
 
 private:
-    std::unique_ptr<Expression> condition; ///< Condição do loop.
-    std::unique_ptr<Body> body;            ///< Corpo do loop.
+    std::unique_ptr<Expression> condition; // Condição do loop.
+    std::unique_ptr<Body> body;            // Corpo do loop.
 };
 
 /**
@@ -592,7 +592,7 @@ public:
     std::vector<Node *> getAttributes() override { return {}; }
 
 private:
-    std::unique_ptr<Body> body; ///< Corpo do bloco paralelo.
+    std::unique_ptr<Body> body; // Corpo do bloco paralelo.
 };
 
 /**
@@ -615,7 +615,7 @@ public:
     std::vector<Node *> getAttributes() override { return {}; }
 
 private:
-    std::unique_ptr<Body> body; ///< Corpo do bloco sequencial.
+    std::unique_ptr<Body> body; // Corpo do bloco sequencial.
 };
 
 /**
@@ -664,9 +664,9 @@ public:
     std::vector<Node *> getAttributes() override { return {}; }
 
 protected:
-    std::string name;                       ///< Nome do canal.
-    std::unique_ptr<Expression> _localhost; ///< Expressão representando o endereço local.
-    std::unique_ptr<Expression> _port;      ///< Expressão representando a porta.
+    std::string name;                       // Nome do canal.
+    std::unique_ptr<Expression> _localhost; // Expressão representando o endereço local.
+    std::unique_ptr<Expression> _port;      // Expressão representando a porta.
 };
 
 /**
@@ -702,8 +702,8 @@ public:
     std::vector<Node *> getAttributes() override { return {}; }
 
 private:
-    std::string func_name;                   ///< Nome da função associada.
-    std::unique_ptr<Expression> description; ///< Expressão contendo a descrição.
+    std::string func_name;                   // Nome da função associada.
+    std::unique_ptr<Expression> description; // Expressão contendo a descrição.
 };
 
 /**

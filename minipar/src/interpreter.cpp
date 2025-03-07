@@ -118,10 +118,10 @@ ValueWrapper Interpreter::evaluate(Expression *expr)
         std::string valueStr = constant->getToken().getValue();
         std::string typeStr = constant->getType();
         LOG_DEBUG("Interpreter: Constante detectada, tipo: " << typeStr << ", valor: " << valueStr);
-        if (typeStr == "NUMBER")
+        if (typeStr == "NUM")
         {
             double num = std::stod(valueStr);
-            LOG_DEBUG("Interpreter: Convertendo NUMBER para double: " << num);
+            LOG_DEBUG("Interpreter: Convertendo num para double: " << num);
             return ValueWrapper(num);
         }
         else if (typeStr == "STRING")
@@ -299,22 +299,22 @@ ValueWrapper Interpreter::evaluate(Expression *expr)
             LOG_DEBUG("Interpreter: Erro, len requer string ou array");
             throw RunTimeError("len requer uma string ou array como argumento");
         }
-        else if (func_name == "to_number")
+        else if (func_name == "to_num")
         {
             if (call->getArgs().empty() || !call->getArgs()[0])
             {
-                LOG_DEBUG("Interpreter: to_number chamado sem argumento válido");
-                throw RunTimeError("to_number requer um argumento válido");
+                LOG_DEBUG("Interpreter: to_num chamado sem argumento válido");
+                throw RunTimeError("to_num requer um argumento válido");
             }
             ValueWrapper arg = evaluate(call->getArgs()[0].get());
             if (std::holds_alternative<std::string>(arg.data))
             {
                 double num = std::stod(std::get<std::string>(arg.data));
-                LOG_DEBUG("Interpreter: to_number retornando: " << num);
+                LOG_DEBUG("Interpreter: to_num retornando: " << num);
                 return ValueWrapper(num);
             }
-            LOG_DEBUG("Interpreter: Erro, to_number requer string");
-            throw RunTimeError("to_number requer uma string como argumento");
+            LOG_DEBUG("Interpreter: Erro, to_num requer string");
+            throw RunTimeError("to_num requer uma string como argumento");
         }
         else if (func_name == "to_string")
         {

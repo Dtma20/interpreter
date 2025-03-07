@@ -35,7 +35,6 @@ int main(int argc, char* argv[]) {
         Interpreter interpreter;
         interpreter.execute(ast.get());
 
-        std::cout << "Execução concluída sem erros.\n";
     } catch (const SyntaxError& e) {
         std::cerr << "Erro de sintaxe: " << e.what() << std::endl;
         return 1;

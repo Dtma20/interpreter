@@ -6,11 +6,11 @@
  * @brief Construtor do SemanticAnalyzer.
  *
  * Inicializa o analisador semântico e define a lista de funções padrão suportadas,
- * como "print", "input", "sleep", "to_number", "to_string", "to_bool", "send", "close", "len", "isalpha" e "isnum".
+ * como "print", "input", "sleep", "to_num", "to_string", "to_bool", "send", "close", "len", "isalpha" e "isnum".
  */
 SemanticAnalyzer::SemanticAnalyzer()
 {
-    default_func_names = {"print", "input", "sleep", "to_number", "to_string",
+    default_func_names = {"print", "input", "sleep", "to_num", "to_string",
                           "to_bool", "send", "close", "len", "isalpha", "isnum"};
 }
 
@@ -349,7 +349,7 @@ void SemanticAnalyzer::visit_Par(Par *node)
 /**
  * @brief Valida um canal de cliente (CChannel).
  *
- * Verifica se os atributos 'localhost' e 'port' possuem os tipos STRING e NUMBER, respectivamente.
+ * Verifica se os atributos 'localhost' e 'port' possuem os tipos STRING e num, respectivamente.
  *
  * @param node Ponteiro para o nó CChannel.
  * @throws SemanticError se os tipos não forem os esperados.
@@ -362,9 +362,9 @@ void SemanticAnalyzer::visit_CChannel(CChannel *node)
         throw SemanticError("localhost em " + node->getName() + " precisa ser STRING");
     }
     std::string port_type = evaluate(node->getPortNode());
-    if (port_type != "NUMBER")
+    if (port_type != "num")
     {
-        throw SemanticError("port em " + node->getName() + " precisa ser NUMBER");
+        throw SemanticError("port em " + node->getName() + " precisa ser num");
     }
 }
 
@@ -415,9 +415,9 @@ void SemanticAnalyzer::visit_SChannel(SChannel *node)
         throw SemanticError("localhost em " + node->getName() + " precisa ser STRING");
     }
     std::string port_type = evaluate(node->getPortNode());
-    if (port_type != "NUMBER")
+    if (port_type != "num")
     {
-        throw SemanticError("port em " + node->getName() + " precisa ser NUMBER");
+        throw SemanticError("port em " + node->getName() + " precisa ser num");
     }
 }
 
@@ -487,7 +487,7 @@ std::optional<std::string> SemanticAnalyzer::visit_Logical(const Logical *node) 
  *
  * Verifica se os operandos são compatíveis para comparação:
  * - Para "==" e "!=", os operandos devem ser do mesmo tipo.
- * - Para outros operadores, os operandos devem ser NUMBER.
+ * - Para outros operadores, os operandos devem ser num.
  *
  * @param node Ponteiro para o nó Relational.
  * @return "BOOL" encapsulado em std::optional se os operandos forem compatíveis.
@@ -507,9 +507,9 @@ std::optional<std::string> SemanticAnalyzer::visit_Relational(const Relational *
     }
     else
     {
-        if (left_type != "NUMBER" || right_type != "NUMBER")
+        if (left_type != "num" || right_type != "num")
         {
-            throw SemanticError("(Erro de Tipo) Esperado NUMBER, mas encontrado " +
+            throw SemanticError("(Erro de Tipo) Esperado num, mas encontrado " +
                                 left_type + " e " + right_type + " na operação " + node->getToken().getValue());
         }
     }
@@ -520,7 +520,7 @@ std::optional<std::string> SemanticAnalyzer::visit_Relational(const Relational *
  * @brief Avalia uma operação aritmética e retorna o tipo do operando.
  *
  * Para o operador de soma, permite apenas operandos do mesmo tipo (permitindo concatenar strings ou somar números).
- * Para outros operadores, os operandos devem ser NUMBER.
+ * Para outros operadores, os operandos devem ser num.
  *
  * @param node Ponteiro para o nó Arithmetic.
  * @return Tipo dos operandos encapsulado em std::optional.
@@ -540,9 +540,9 @@ std::optional<std::string> SemanticAnalyzer::visit_Arithmetic(const Arithmetic *
     }
     else
     {
-        if (left_type != "NUMBER" || right_type != "NUMBER")
+        if (left_type != "num" || right_type != "num")
         {
-            throw SemanticError("(Erro de Tipo) Esperado NUMBER, mas encontrado " +
+            throw SemanticError("(Erro de Tipo) Esperado num, mas encontrado " +
                                 left_type + " e " + right_type + " na operação " + node->getToken().getValue());
         }
     }
@@ -552,7 +552,7 @@ std::optional<std::string> SemanticAnalyzer::visit_Arithmetic(const Arithmetic *
 /**
  * @brief Avalia uma operação unária e retorna o tipo do operando.
  *
- * Verifica se o operador unário '-' é aplicado a um NUMBER e se o '!' é aplicado a um BOOL.
+ * Verifica se o operador unário '-' é aplicado a um num e se o '!' é aplicado a um BOOL.
  *
  * @param node Ponteiro para o nó Unary.
  * @return Tipo do operando encapsulado em std::optional.
@@ -563,9 +563,9 @@ std::optional<std::string> SemanticAnalyzer::visit_Unary(const Unary *node) cons
     std::string expr_type = evaluate(node->getExpr());
     if (node->getToken().getTag() == "-")
     {
-        if (expr_type != "NUMBER")
+        if (expr_type != "num")
         {
-            throw SemanticError("(Erro de Tipo) Esperado NUMBER, mas encontrado " +
+            throw SemanticError("(Erro de Tipo) Esperado num, mas encontrado " +
                                 expr_type + " na operação " + node->getToken().getValue());
         }
     }

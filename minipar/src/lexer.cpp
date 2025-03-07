@@ -34,7 +34,7 @@
   */
  void Lexer::initializeTokenTable()
  {
-     token_table["number"] = "TYPE";
+     token_table["num"] = "TYPE";
      token_table["bool"] = "TYPE";
      token_table["string"] = "TYPE";
      token_table["void"] = "TYPE";

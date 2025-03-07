@@ -1,3 +1,7 @@
+Para atualizar o README do projeto "Minipar" de acordo com as sugestões fornecidas, seguem as revisões e expansões necessárias. Abaixo está a versão atualizada do README, incorporando todas as melhorias de forma clara, precisa e alinhada com as funcionalidades da linguagem. As seções foram ajustadas conforme identificado, com correções, adições e exemplos expandidos.
+
+---
+
 # Minipar: Linguagem de Programação Minimalista
 
 Minipar é uma linguagem de programação minimalista desenvolvida para oferecer suporte a estruturas básicas de controle, paralelismo e comunicação por canais. Com uma sintaxe simples e expressiva, o projeto inclui um analisador léxico, sintático, semântico e um interpretador escrito em C++.
@@ -63,7 +67,7 @@ Para compilar e executar programas escritos em Minipar, siga os passos abaixo:
      ```bash
      make run
      ```  
-     Esse comando gera o executável `programa` usando o seguinte comando de compilação:
+     Esse comando gera o executável `programa` usando:
      ```bash
      g++ -g -o programa ../main.cpp ../src/lexer.cpp ../src/parser.cpp ../src/semantic.cpp ../src/token.cpp ../src/error.cpp ../src/ast.cpp ../src/interpreter.cpp -std=c++17 -fPIC
      ```
@@ -71,13 +75,13 @@ Para compilar e executar programas escritos em Minipar, siga os passos abaixo:
      ```bash
      make debug
      ```  
-     Essa opção adiciona a flag `-DDEBUG_MODE` para ativar logs de depuração:
+     Adiciona a flag `-DDEBUG_MODE` para logs detalhados:
      ```bash
      g++ -DDEBUG_MODE -g -o programa ../main.cpp ../src/lexer.cpp ../src/parser.cpp ../src/semantic.cpp ../src/token.cpp ../src/error.cpp ../src/ast.cpp ../src/interpreter.cpp -std=c++17 -fPIC
      ```
 
 3. **Execução:**  
-   Após a compilação, execute o interpretador passando um arquivo fonte como argumento, por exemplo:
+   Execute o interpretador passando um arquivo fonte como argumento:
    ```bash
    ./build/programa exemplos/fib.minipar
    ```
@@ -87,26 +91,26 @@ Para compilar e executar programas escritos em Minipar, siga os passos abaixo:
 
 ## Exemplos de Programas
 
-Os exemplos incluídos no projeto demonstram diversas funcionalidades do Minipar:
+Os exemplos incluídos demonstram diversas funcionalidades do Minipar:
 
 1. **Problema da Mochila Binária (`exemplos/mochila.minipar`):**  
-   Utiliza array, laços `for` e funções para resolver o problema da mochila via programação dinâmica.
+   Utiliza arrays, laços `for` e funções para resolver o problema via programação dinâmica.  
    - **Saída:** `15`
 
 2. **Fibonacci Iterativo (`exemplos/fib.minipar`):**  
-   Calcula a sequência de Fibonacci de forma iterativa.
+   Calcula a sequência de Fibonacci de forma iterativa.  
    - **Saída:** `8` (Sequência: 0, 1, 1, 2, 3, 5, 8)
 
 3. **Treinamento de Neurônio (`exemplos/nn.minipar`):**  
-   Implementa um perceptron simples com ajuste de pesos, iterando até atingir o valor desejado.
-   - **Saída parcial:** Exibe as iterações com ajustes de peso até o treinamento ser concluído.
+   Implementa um perceptron simples com ajuste de pesos.  
+   - **Saída parcial:** Exibe iterações com ajustes até o treinamento ser concluído.
 
 4. **Calculadora via Canal (`exemplos/server.minipar`):**  
-   Cria um servidor que processa expressões matemáticas enviadas por um cliente, evitando estruturas `else if` aninhadas.
+   Cria um servidor que processa expressões enviadas por um cliente.  
    - **Saída:** Inicializa um servidor que responde a expressões como `"2 + 3"`.
 
 5. **Fibonacci Recursivo (`exemplos/fib2.minipar`):**  
-   Utiliza recursão para calcular a sequência de Fibonacci.
+   Utiliza recursão para calcular a sequência de Fibonacci.  
    - **Saída:** `8`
 
 ---
@@ -119,25 +123,25 @@ Os exemplos incluídos no projeto demonstram diversas funcionalidades do Minipar
   Iniciam com letras ou `_`, seguidos por letras, números ou `_` (ex.: `x`, `minha_variavel`).
 
 - **Palavras-chave:**  
-  Incluem `func`, `if`, `while`, `return`, `break`, `continue`, `par`, `seq`, `c_channel`, `s_channel`, `for`, entre outras.
+  `func`, `if`, `while`, `return`, `break`, `continue`, `par`, `seq`, `c_channel`, `s_channel`, `for`, entre outras.
 
 - **Comentários:**  
   - Linha única: `# comentário`
   - Multi-linha: `/* comentário */`
 
 - **Espaços e Quebras de Linha:**  
-  São geralmente ignorados, exceto para delimitar tokens.
+  Geralmente ignorados, exceto para delimitar tokens.
 
 ---
 
 ### 2. Tipos de Dados
 
 Minipar suporta os seguintes tipos:
-- **number:** Números reais (ex.: `5`, `3.14`).
+- **num:** Números reais (ex.: `5`, `3.14`).
 - **string:** Cadeias de caracteres delimitadas por aspas (ex.: `"hello"`).
 - **bool:** Valores booleanos (`true`, `false`).
-- **void:** Tipo de retorno para funções que não retornam valor.
-- **mochila:** Coleções ordenadas de elementos do mesmo tipo (ex.: `x: array[10]`).
+- **void:** Tipo de retorno para funções sem valor retornado.
+- **array:** Coleções ordenadas de elementos do mesmo tipo (ex.: `x: array[10]`).
 
 ---
 
@@ -146,9 +150,18 @@ Minipar suporta os seguintes tipos:
 #### Declaração de Variáveis e Funções
 
 ```go
-x : number = 42
+x : num = 42
 str : string = "texto"
 arr : array[5] = [1, 2, 3, 4, 5]
+```
+
+#### Operações com Arrays
+
+Arrays permitem acesso e manipulação de elementos via índices:
+```go
+arr : array[5] = [1, 2, 3, 4, 5]
+print(arr[2])  # Exibe 3
+arr[2] = 10    # Altera o elemento no índice 2 para 10
 ```
 
 #### Estruturas de Controle
@@ -161,40 +174,25 @@ arr : array[5] = [1, 2, 3, 4, 5]
       print("negativo ou zero")
   }
   ```
-  *Nota:* Para condições múltiplas, utilize blocos aninhados:
-  ```go
-  if (operator == "+") {
-      result = result + valor_num
-  } else {
-      if (operator == "-") {
-          result = result - valor_num
-      } else {
-          print("outro caso")
-      }
-  }
-  ```
 
 - **Laços:**
-  - **While:**  
-    Utilizado para repetições com condição.
-  - **For:**  
-    Comumente usado em iterações com contadores.
+  - **While:** Para repetições com condição.
+  - **For:** Para iterações com contadores.
 
 - **Comandos de Controle de Fluxo:**  
-  `break` e `continue` para manipulação de iterações.
+  `break` e `continue` manipulam iterações.
 
 #### Estruturas de Paralelismo e Sequenciamento
 
-- **Paralelismo (`par`):**
+- **Paralelismo (`par`):** Executa instruções em threads separadas.
   ```go
   par {
       print("tarefa 1")
       print("tarefa 2")
   }
   ```
-  Executa as instruções em threads separadas.
 
-- **Sequenciamento Explícito (`seq`):**
+- **Sequenciamento Explícito (`seq`):** Executa instruções em ordem.
   ```go
   seq {
       print("passo 1")
@@ -204,12 +202,26 @@ arr : array[5] = [1, 2, 3, 4, 5]
 
 #### Comunicação via Canais
 
-- **CChannel (Canal Cliente):**
+- **CChannel (Cliente):**
   ```go
   c_channel meu_canal { "localhost", 8080 }
   ```
-- **SChannel (Canal Servidor):**
-  Exemplo presente em `exemplos/server.minipar`.
+- **SChannel (Servidor):**
+  Veja exemplo em `exemplos/server.minipar`.
+
+- **Exemplo de Uso:**
+  - **Servidor:**
+    ```go
+    s_channel servidor { 8080 }
+    print("Aguardando conexão...")
+    # Processa mensagens recebidas
+    ```
+  - **Cliente:**
+    ```go
+    c_channel cliente { "localhost", 8080 }
+    cliente.send("2 + 3")
+    ```
+  *Nota:* Canais utilizam sockets TCP para comunicação.
 
 ---
 
@@ -224,29 +236,42 @@ arr : array[5] = [1, 2, 3, 4, 5]
 #### Operadores Lógicos
 `&&` (AND), `||` (OR), `!` (NOT)
 
-#### Ordem de Precedência
-1. Operadores unários: `!`, `-`
-2. Multiplicação e divisão: `*`, `/`
-3. Adição e subtração: `+`, `-`
-4. Operadores relacionais: `<`, `>`, `<=`, `>=`
-5. Igualdade: `==`, `!=`
-6. Lógicos: `&&` e `||`
-7. Uso de parênteses para alterar a precedência.
+#### Operadores Unários
+- `++`: Incrementa em 1 (ex.: `x++`).
+- `--`: Decrementa em 1 (ex.: `x--`).
+- `!`: Nega valor booleano (ex.: `!true` → `false`).
+- `-`: Nega valor numérico (ex.: `-5`).
 
-#### Chamadas de Função
-Exemplos em `exemplos/fib.minipar`, `exemplos/nn.minipar` e outros.
+#### Ordem de Precedência
+1. Unários: `!`, `-`, `++`, `--`
+2. `*`, `/`
+3. `+`, `-`
+4. `<`, `>`, `<=`, `>=`
+5. `==`, `!=`
+6. `&&`, `||`
+7. Parênteses alteram precedência.
 
 ---
 
 ### 5. Biblioteca Padrão
 
 - **Entrada e Saída:**  
-  `print(valor)` para exibição de mensagens.
+  - `print(valor)`: Exibe o valor no console.
 
 - **Conversão de Tipos:**  
-  `to_number(str)` e `to_string(valor)`
+  - `to_num(str)`: Converte string em número (ex.: `"42" → 42`).
+  - `to_string(valor)`: Converte valor em string.
 
-- **Manipulação de Strings:**  
-  `len(valor)`, `isalpha(str)` e `isnum(str)`
+- **Manipulação de Strings e Arrays:**  
+  - `len(valor)`: Retorna tamanho de string ou array.
+  - `isalpha(str)`: Verifica se contém apenas letras.
+  - `isnum(str)`: Verifica se é um número válido.
 
 ---
+
+### 6. Tratamento de Erros
+
+O interpretador exibe mensagens de erro no console, como:
+- "Erro: Divisão por zero" em `x = 5 / 0`.
+- "Erro: Índice fora do intervalo" em `arr[10]` (array de tamanho 5).  
+Use `make debug` para logs detalhados.

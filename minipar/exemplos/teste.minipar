@@ -1,4 +1,0 @@
-i: number = 10
-print(i)
-i++
-print(i)
