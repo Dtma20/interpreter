@@ -35,8 +35,8 @@ A organização dos arquivos do Minipar segue uma estrutura clara e modular, fac
   
 - **exemplos/**  
   Exemplos de programas escritos em Minipar, que demonstram diversas funcionalidades da linguagem:
-  - `fib.minipar` (Fibonacci Recursivo)
-  - `fib2.minipar` (Fibonacci Iterativo)
+  - `fib.minipar` (Fibonacci Iterativo)
+  - `fib2.minipar` (Fibonacci Recursivo)
   - `mochila.minipar` (Problema da Mochila Binária)
   - `nn.minipar` (Treinamento de Neurônio)
   - `server.minipar` (Calculadora via Canal)
