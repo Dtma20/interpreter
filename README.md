@@ -43,9 +43,6 @@ A organização dos arquivos do Minipar segue uma estrutura clara e modular, fac
   
 - **main.cpp**  
   Arquivo principal que integra os componentes e inicia o interpretador.
-  
-- **README.md**  
-  Documentação e instruções gerais do projeto.
 
 ---
 
