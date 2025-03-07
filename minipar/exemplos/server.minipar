@@ -1,7 +1,7 @@
 func calc(message : string) -> string {
-    index : number = 0
-    size : number = len(message)
-    result : number = 0
+    index : num = 0
+    size : num = len(message)
+    result : num = 0
     operator : string = "+"
 
     print(message)
@@ -20,7 +20,7 @@ func calc(message : string) -> string {
                 valor = valor + message[index]
                 index = index + 1
             }
-            valor_num : number = to_number(valor)
+            valor_num : num = to_number(valor)
             if (operator == "+") {
                 result = result + valor_num
             }
