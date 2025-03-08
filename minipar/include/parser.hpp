@@ -73,10 +73,12 @@ private:
     int lineno;                                ///< Número da linha do token atual.
     std::shared_ptr<SymTable> symtable;        ///< Tabela de símbolos para gerenciamento de variáveis e funções.
 
+    // Métodos principais de análise sintática
+
     /**
-     * @brief Analisa e retorna o módulo principal do programa.
+     * @brief Analisa o programa e retorna o módulo principal.
      *
-     * @return Um ponteiro único para um módulo AST.
+     * @return Um ponteiro único para o módulo AST.
      */
     std::unique_ptr<Module> program();
 
@@ -136,28 +138,28 @@ private:
     Token peekNext();
 
     /**
-     * @brief Analisa uma expressão lógica de disjunção (`or`).
+     * @brief Analisa uma expressão lógica de disjunção (or).
      *
      * @return Um ponteiro único para a expressão AST correspondente.
      */
     std::unique_ptr<Expression> disjunction();
 
     /**
-     * @brief Analisa uma expressão lógica de conjunção (`and`).
+     * @brief Analisa uma expressão lógica de conjunção (and).
      *
      * @return Um ponteiro único para a expressão AST correspondente.
      */
     std::unique_ptr<Expression> conjunction();
 
     /**
-     * @brief Analisa uma expressão de igualdade (`==` e `!=`).
+     * @brief Analisa uma expressão de igualdade (== e !=).
      *
      * @return Um ponteiro único para a expressão AST correspondente.
      */
     std::unique_ptr<Expression> equality();
 
     /**
-     * @brief Analisa uma expressão relacional (`<`, `>`, `<=`, `>=`).
+     * @brief Analisa uma expressão relacional (<, >, <=, >=).
      *
      * @return Um ponteiro único para a expressão AST correspondente.
      */
@@ -178,7 +180,7 @@ private:
     std::unique_ptr<Expression> term();
 
     /**
-     * @brief Analisa uma expressão unária (`-`, `!`).
+     * @brief Analisa uma expressão unária (-, !).
      *
      * @return Um ponteiro único para a expressão AST correspondente.
      */
@@ -205,6 +207,146 @@ private:
      * @return O nome da variável.
      */
     std::string var(const std::string &id_type);
+
+    // Métodos auxiliares para modularização do stmt()
+
+    /**
+     * @brief Processa um statement iniciando com operador unário pré-fixado (++ ou --).
+     *
+     * @return Um ponteiro único para o nó AST representando o operador unário pré-fixado.
+     */
+    std::unique_ptr<Node> stmtUnaryPrefix();
+
+    /**
+     * @brief Processa um statement que inicia com um identificador (ID).
+     *
+     * Analisa os diferentes casos quando um statement inicia com ID, como acesso a índices, 
+     * operadores pós-fixados, declarações com tipo, atribuições simples e chamadas de função.
+     *
+     * @return Um ponteiro único para o nó AST correspondente.
+     */
+    std::unique_ptr<Node> stmtId();
+
+    /**
+     * @brief Processa a definição de função.
+     *
+     * @return Um ponteiro único para o nó AST representando a definição da função.
+     */
+    std::unique_ptr<Node> stmtFunc();
+
+    /**
+     * @brief Processa a estrutura condicional IF-ELSE.
+     *
+     * @return Um ponteiro único para o nó AST representando a estrutura condicional.
+     */
+    std::unique_ptr<Node> stmtIf();
+
+    /**
+     * @brief Processa o laço WHILE.
+     *
+     * @return Um ponteiro único para o nó AST representando o laço WHILE.
+     */
+    std::unique_ptr<Node> stmtWhile();
+
+    /**
+     * @brief Processa o comando RETURN.
+     *
+     * @return Um ponteiro único para o nó AST representando o comando RETURN.
+     */
+    std::unique_ptr<Node> stmtReturn();
+
+    /**
+     * @brief Processa o comando BREAK.
+     *
+     * @return Um ponteiro único para o nó AST representando o comando BREAK.
+     */
+    std::unique_ptr<Node> stmtBreak();
+
+    /**
+     * @brief Processa o comando CONTINUE.
+     *
+     * @return Um ponteiro único para o nó AST representando o comando CONTINUE.
+     */
+    std::unique_ptr<Node> stmtContinue();
+
+    /**
+     * @brief Processa uma sequência de instruções (SEQ).
+     *
+     * @return Um ponteiro único para o nó AST representando a sequência de instruções.
+     */
+    std::unique_ptr<Node> stmtSeq();
+
+    /**
+     * @brief Processa a execução paralela (PAR).
+     *
+     * @return Um ponteiro único para o nó AST representando a execução paralela.
+     */
+    std::unique_ptr<Node> stmtPar();
+
+    /**
+     * @brief Processa a declaração de canal cliente (C_CHANNEL).
+     *
+     * @return Um ponteiro único para o nó AST representando o canal cliente.
+     */
+    std::unique_ptr<Node> stmtCChannel();
+
+    /**
+     * @brief Processa a declaração de canal servidor (S_CHANNEL).
+     *
+     * @return Um ponteiro único para o nó AST representando o canal servidor.
+     */
+    std::unique_ptr<Node> stmtSChannel();
+
+    /**
+     * @brief Processa o laço FOR, reescrevendo-o como uma sequência com inicialização e laço WHILE.
+     *
+     * @return Um ponteiro único para o nó AST representando a estrutura FOR.
+     */
+    std::unique_ptr<Node> stmtFor();
+
+    // Métodos auxiliares para o processamento de statements que iniciam com ID
+
+    /**
+     * @brief Processa o acesso a índices (array) e suas variações, como atribuição e pós-incremento/decremento.
+     *
+     * @param id_name Nome do identificador.
+     * @return Um ponteiro único para o nó AST representando o acesso ao array.
+     */
+    std::unique_ptr<Node> processArrayAccessStmt(const std::string &id_name);
+
+    /**
+     * @brief Processa operadores unários pós-fixados (ex.: x++ ou x--).
+     *
+     * @param id_name Nome do identificador.
+     * @return Um ponteiro único para o nó AST representando o operador unário pós-fixado.
+     */
+    std::unique_ptr<Node> processPostfixUnaryStmt(const std::string &id_name);
+
+    /**
+     * @brief Processa a declaração com tipo para identificadores.
+     *
+     * Trata declarações do tipo <ID> : <TYPE> (= ... ou array[...] ...)
+     *
+     * @param id_name Nome do identificador.
+     * @return Um ponteiro único para o nó AST representando a declaração com tipo.
+     */
+    std::unique_ptr<Node> processTypeDeclarationStmt(const std::string &id_name);
+
+    /**
+     * @brief Processa uma atribuição simples (ex.: x = ...).
+     *
+     * @param id_name Nome do identificador.
+     * @return Um ponteiro único para o nó AST representando a atribuição.
+     */
+    std::unique_ptr<Node> processSimpleAssignStmt(const std::string &id_name);
+
+    /**
+     * @brief Processa a chamada de função (ex.: func(...)).
+     *
+     * @param id_name Nome do identificador que também é usado para a chamada da função.
+     * @return Um ponteiro único para o nó AST representando a chamada de função.
+     */
+    std::unique_ptr<Node> processFunctionCallStmt(const std::string &id_name);
 };
 
 #endif // PARSER_HPP
