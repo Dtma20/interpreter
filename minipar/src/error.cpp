@@ -22,7 +22,7 @@ SyntaxError::SyntaxError(int line, const std::string &msg)
  * @param msg Mensagem detalhada descrevendo o erro semântico.
  */
 SemanticError::SemanticError(const std::string &msg)
-    : std::runtime_error("Erro de Semântica: " + msg) {}
+    : std::runtime_error(msg) {}
 
 /**
  * @brief Construtor para exceção de erro em tempo de execução.
@@ -33,4 +33,4 @@ SemanticError::SemanticError(const std::string &msg)
  * @param msg Mensagem detalhada descrevendo o erro em tempo de execução.
  */
 RunTimeError::RunTimeError(const std::string &msg)
-    : std::runtime_error("Erro em Tempo de Execução: " + msg) {}
+    : std::runtime_error(msg) {}

@@ -152,6 +152,16 @@ private:
      */
     std::string convert_value_to_string(const ValueWrapper &value);
 
+    ValueWrapper evaluateConstant(Constant *constant);
+    ValueWrapper evaluateID(ID *id);
+    ValueWrapper evaluateArray(Array *array);
+    ValueWrapper evaluateAccess(Access *access);
+    ValueWrapper evaluateFunctionCall(Call *call);
+    ValueWrapper evaluateRelational(Relational *relational);
+    ValueWrapper evaluateArithmetic(Arithmetic *arithmetic);
+    ValueWrapper evaluateUnary(Unary *unary);
+    ValueWrapper evaluateLogical(Logical *logical);
+
 public:
     /**
      * @brief Construtor do Interpreter.

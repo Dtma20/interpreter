@@ -268,25 +268,6 @@ std::string Call::getOper() const
 }
 
 /**
- * @brief Construtor da classe Module.
- *
- * Representa um módulo (arquivo ou unidade de código) que contém um corpo (lista de statements).
- *
- * @param stmts Ponteiro único para o corpo do módulo.
- */
-Module::Module(std::unique_ptr<Body> stmts)
-    : stmts(std::move(stmts)) {}
-
-/**
- * @brief Obtém os statements do módulo.
- * @return Referência constante para o corpo do módulo.
- */
-const Body &Module::getStmts() const
-{
-    return *stmts;
-}
-
-/**
  * @brief Construtor da classe Assign.
  *
  * Representa uma operação de atribuição na AST.
@@ -469,25 +450,6 @@ Par::Par(std::unique_ptr<Body> body)
  * @return Referência constante para o corpo do bloco.
  */
 const Body &Par::getBody() const
-{
-    return *body;
-}
-
-/**
- * @brief Construtor da classe Seq.
- *
- * Representa uma sequência de instruções na AST.
- *
- * @param body Corpo da sequência.
- */
-Seq::Seq(std::unique_ptr<Body> body)
-    : body(std::move(body)) {}
-
-/**
- * @brief Obtém o corpo da sequência de instruções.
- * @return Referência constante para o corpo da sequência.
- */
-const Body &Seq::getBody() const
 {
     return *body;
 }

@@ -103,6 +103,7 @@ bool Interpreter::is_true(const ValueWrapper &value)
  *
  * Em caso de erro (ex.: expressão nula, variável não definida), lança uma exceção RunTimeError.
  */
+
 ValueWrapper Interpreter::evaluate(Expression *expr)
 {
     if (!expr)
@@ -110,526 +111,561 @@ ValueWrapper Interpreter::evaluate(Expression *expr)
         LOG_DEBUG("Interpreter: Tentativa de avaliar expressão nula");
         throw RunTimeError("Tentativa de avaliar expressão nula");
     }
+
     LOG_DEBUG("Interpreter: Avaliando expressão, tipo: " << typeid(*expr).name());
 
-    // 1. Constantes (ex.: números, strings, bools)
     if (auto *constant = dynamic_cast<Constant *>(expr))
     {
-        std::string valueStr = constant->getToken().getValue();
-        std::string typeStr = constant->getType();
-        LOG_DEBUG("Interpreter: Constante detectada, tipo: " << typeStr << ", valor: " << valueStr);
-        if (typeStr == "NUM")
-        {
-            double num = std::stod(valueStr);
-            LOG_DEBUG("Interpreter: Convertendo num para double: " << num);
-            return ValueWrapper(num);
-        }
-        else if (typeStr == "STRING")
-        {
-            LOG_DEBUG("Interpreter: Retornando STRING: " << valueStr);
-            return ValueWrapper(valueStr);
-        }
-        else if (typeStr == "BOOL")
-        {
-            bool result = valueStr == "true";
-            LOG_DEBUG("Interpreter: Convertendo BOOL: " << result);
-            return ValueWrapper(result);
-        }
-        LOG_DEBUG("Interpreter: Erro, tipo de constante não suportado: " << typeStr);
-        throw RunTimeError("Tipo de constante não suportado: " + typeStr);
+        return evaluateConstant(constant);
     }
-    // 2. Identificadores (variáveis)
     else if (auto *id = dynamic_cast<ID *>(expr))
     {
-        std::string var_name = id->getToken().getValue();
-        LOG_DEBUG("Interpreter: Avaliando ID: " << var_name);
-        // Busca a variável nos escopos, começando do mais interno
-        for (auto it = scopes.rbegin(); it != scopes.rend(); ++it)
-        {
-            auto var_it = it->variables.find(var_name);
-            if (var_it != it->variables.end())
-            {
-                LOG_DEBUG("Interpreter: Variável " << var_name << " encontrada no escopo atual");
-                return var_it->second;
-            }
-        }
-        LOG_DEBUG("Interpreter: Erro, variável não definida: " << var_name);
-        throw RunTimeError("Variável não definida: " + var_name);
+        return evaluateID(id);
     }
-    // 3. Arrays
     else if (auto *array = dynamic_cast<Array *>(expr))
     {
-        std::vector<ValueWrapper> elements;
-        for (const auto &elem : array->getElements())
-        {
-            if (!elem)
-            {
-                LOG_DEBUG("Interpreter: Elemento nulo no array");
-                throw RunTimeError("Elemento nulo no array");
-            }
-            ValueWrapper elem_value = evaluate(elem.get());
-            if (!elem_value.isInitialized()) // Verifica se o elemento foi inicializado
-            {
-                LOG_DEBUG("Interpreter: Elemento do array não inicializado");
-                throw RunTimeError("Elemento do array não inicializado");
-            }
-            LOG_DEBUG("Interpreter: Elemento avaliado: " << convert_value_to_string(elem_value));
-            elements.push_back(elem_value);
-        }
-        LOG_DEBUG("Interpreter: Array avaliado com " << elements.size() << " elementos");
-        return ValueWrapper(elements);
+        return evaluateArray(array);
     }
-    // 4. Acesso a elementos (arrays ou strings)
     else if (auto *access = dynamic_cast<Access *>(expr))
     {
-        if (!access->getId() || !access->getExpr())
-        {
-            LOG_DEBUG("Interpreter: Acesso com base ou índice nulo");
-            throw RunTimeError("Acesso com base ou índice nulo");
-        }
-        ValueWrapper base_val = evaluate(access->getId());
-        ValueWrapper index_val = evaluate(access->getExpr());
-
-        // Acesso a array por índice numérico
-        if (std::holds_alternative<std::vector<ValueWrapper>>(base_val.data) &&
-            std::holds_alternative<double>(index_val.data))
-        {
-            int index = static_cast<int>(std::get<double>(index_val.data));
-            auto &arr = std::get<std::vector<ValueWrapper>>(base_val.data);
-            if (index >= 0 && index < static_cast<int>(arr.size()))
-            {
-                LOG_DEBUG("Interpreter: Acesso a array no índice " << index);
-                return arr[index];
-            }
-            LOG_DEBUG("Interpreter: Erro, índice fora do intervalo: " << index);
-            throw RunTimeError("Índice " + std::to_string(index) + " fora do intervalo");
-        }
-        // Acesso a string por índice numérico
-        else if (std::holds_alternative<std::string>(base_val.data) &&
-                 std::holds_alternative<double>(index_val.data))
-        {
-            std::string str = std::get<std::string>(base_val.data);
-            int index = static_cast<int>(std::get<double>(index_val.data));
-            LOG_DEBUG("Interpreter: Acesso a string '" << str << "' no índice: " << index);
-            if (index >= 0 && index < static_cast<int>(str.length()))
-            {
-                std::string result(1, str[index]);
-                LOG_DEBUG("Interpreter: Resultado do acesso: " << result);
-                return ValueWrapper(result);
-            }
-            LOG_DEBUG("Interpreter: Erro, índice fora do intervalo: " << index);
-            throw RunTimeError("Índice fora do intervalo: " + std::to_string(index));
-        }
-        LOG_DEBUG("Interpreter: Erro, tipo inválido para acesso");
-        throw RunTimeError("Tipo inválido para acesso");
+        return evaluateAccess(access);
     }
-    // 5. Chamadas de Função
     else if (auto *call = dynamic_cast<Call *>(expr))
     {
-        if (!call->getId())
-        {
-            LOG_DEBUG("Interpreter: Chamada de função com identificador nulo");
-            throw RunTimeError("Chamada de função com identificador nulo");
-        }
-        std::string func_name = call->getId()->getToken().getValue();
-        LOG_DEBUG("Interpreter: Avaliando chamada de função: " << func_name);
-
-        // Funções internas (builtin)
-        if (func_name == "print")
-        {
-            for (const auto &arg : call->getArgs())
-            {
-                if (!arg)
-                {
-                    LOG_DEBUG("Interpreter: Argumento nulo em print");
-                    throw RunTimeError("Argumento nulo em print");
-                }
-                ValueWrapper value = evaluate(arg.get());
-                LOG_DEBUG("Interpreter: Argumento para print: " << convert_value_to_string(value));
-                // Imprime o valor utilizando std::visit para tratar os diferentes tipos
-                std::visit([](auto &&val)
-                           {
-                                using T = std::decay_t<decltype(val)>;
-                                if constexpr (std::is_same_v<T, std::monostate>) {
-                                    std::cout << "[uninitialized]" << std::endl;
-                                }
-                                else if constexpr (std::is_same_v<T, double>) {
-                                    std::cout << val << std::endl;
-                                }
-                                else if constexpr (std::is_same_v<T, bool>) {
-                                    std::cout << (val ? "true" : "false") << std::endl;
-                                }
-                                else if constexpr (std::is_same_v<T, std::string>) {
-                                    std::cout << val << std::endl;
-                                }
-                                else if constexpr (std::is_same_v<T, std::vector<ValueWrapper>>) {
-                                    std::cout << "[";
-                                    bool first = true;
-                                    for (const auto &elem : val) {
-                                        if (!first) std::cout << ", ";
-                                        std::cout << elem;
-                                        first = false;
-                                    }
-                                    std::cout << "]" << std::endl;
-                                } }, value.data);
-            }
-            LOG_DEBUG("Interpreter: print concluído, retornando string vazia");
-            return ValueWrapper(std::string(""));
-        }
-        else if (func_name == "len")
-        {
-            if (call->getArgs().empty() || !call->getArgs()[0])
-            {
-                LOG_DEBUG("Interpreter: len chamado sem argumento válido");
-                throw RunTimeError("len requer um argumento válido");
-            }
-            ValueWrapper arg = evaluate(call->getArgs()[0].get());
-            if (std::holds_alternative<std::string>(arg.data))
-            {
-                double length = static_cast<double>(std::get<std::string>(arg.data).length());
-                LOG_DEBUG("Interpreter: len retornando: " << length);
-                return ValueWrapper(length);
-            }
-            else if (std::holds_alternative<std::vector<ValueWrapper>>(arg.data))
-            {
-                double length = static_cast<double>(std::get<std::vector<ValueWrapper>>(arg.data).size());
-                LOG_DEBUG("Interpreter: len retornando: " << length);
-                return ValueWrapper(length);
-            }
-            LOG_DEBUG("Interpreter: Erro, len requer string ou array");
-            throw RunTimeError("len requer uma string ou array como argumento");
-        }
-        else if (func_name == "to_num")
-        {
-            if (call->getArgs().empty() || !call->getArgs()[0])
-            {
-                LOG_DEBUG("Interpreter: to_num chamado sem argumento válido");
-                throw RunTimeError("to_num requer um argumento válido");
-            }
-            ValueWrapper arg = evaluate(call->getArgs()[0].get());
-            if (std::holds_alternative<std::string>(arg.data))
-            {
-                double num = std::stod(std::get<std::string>(arg.data));
-                LOG_DEBUG("Interpreter: to_num retornando: " << num);
-                return ValueWrapper(num);
-            }
-            LOG_DEBUG("Interpreter: Erro, to_num requer string");
-            throw RunTimeError("to_num requer uma string como argumento");
-        }
-        else if (func_name == "to_string")
-        {
-            if (call->getArgs().empty() || !call->getArgs()[0])
-            {
-                LOG_DEBUG("Interpreter: to_string chamado sem argumento válido");
-                throw RunTimeError("to_string requer um argumento válido");
-            }
-            ValueWrapper arg = evaluate(call->getArgs()[0].get());
-            std::string result = convert_value_to_string(arg);
-            LOG_DEBUG("Interpreter: to_string retornando: " << result);
-            return ValueWrapper(result);
-        }
-        else if (func_name == "isnum")
-        {
-            if (call->getArgs().empty() || !call->getArgs()[0])
-            {
-                LOG_DEBUG("Interpreter: isnum chamado sem argumento válido");
-                throw RunTimeError("isnum requer um argumento válido");
-            }
-            ValueWrapper arg = evaluate(call->getArgs()[0].get());
-            if (std::holds_alternative<std::string>(arg.data))
-            {
-                std::string str = std::get<std::string>(arg.data);
-                bool result = std::all_of(str.begin(), str.end(), ::isdigit);
-                LOG_DEBUG("Interpreter: isnum retornando: " << (result ? "true" : "false"));
-                return ValueWrapper(result);
-            }
-            LOG_DEBUG("Interpreter: isnum retornando false (não é string)");
-            return ValueWrapper(false);
-        }
-        else if (func_name == "isalpha")
-        {
-            if (call->getArgs().empty() || !call->getArgs()[0])
-            {
-                LOG_DEBUG("Interpreter: isalpha chamado sem argumento válido");
-                throw RunTimeError("isalpha requer um argumento válido");
-            }
-            ValueWrapper arg = evaluate(call->getArgs()[0].get());
-            if (std::holds_alternative<std::string>(arg.data))
-            {
-                std::string str = std::get<std::string>(arg.data);
-                bool result = std::all_of(str.begin(), str.end(), ::isalpha);
-                LOG_DEBUG("Interpreter: isalpha retornando: " << (result ? "true" : "false"));
-                return ValueWrapper(result);
-            }
-            LOG_DEBUG("Interpreter: isalpha retornando false (não é string)");
-            return ValueWrapper(false);
-        }
-        // Chamada de função definida pelo usuário
-        else if (functions.find(func_name) != functions.end())
-        {
-            ValueWrapper result = execute_function(functions[func_name], call->getArgs());
-            LOG_DEBUG("Interpreter: Função definida pelo usuário " << func_name << " retornou valor");
-            return result;
-        }
-        LOG_DEBUG("Interpreter: Erro, função não suportada: " << func_name);
-        throw RunTimeError("Função não suportada: " + func_name);
+        return evaluateFunctionCall(call);
     }
-    // 6. Operações Relacionais (comparações)
     else if (auto *relational = dynamic_cast<Relational *>(expr))
     {
-        LOG_DEBUG("Interpreter: Avaliando operação relacional");
-        if (!relational->getLeft() || !relational->getRight())
-        {
-            LOG_DEBUG("Interpreter: Operando nulo em expressão relacional");
-            throw RunTimeError("Operando nulo em expressão relacional");
-        }
-        ValueWrapper left_value = evaluate(relational->getLeft());
-        ValueWrapper right_value = evaluate(relational->getRight());
-        std::string op = relational->getToken().getTag();
-        LOG_DEBUG("Interpreter: Operação relacional: " << convert_value_to_string(left_value)
-                                                       << " " << op << " " << convert_value_to_string(right_value));
-
-        if (std::holds_alternative<double>(left_value.data) && std::holds_alternative<double>(right_value.data))
-        {
-            double left_num = std::get<double>(left_value.data);
-            double right_num = std::get<double>(right_value.data);
-            if (op == "<")
-                return ValueWrapper(left_num < right_num);
-            if (op == ">")
-                return ValueWrapper(left_num > right_num);
-            if (op == "LTE")
-                return ValueWrapper(left_num <= right_num);
-            if (op == "GTE")
-                return ValueWrapper(left_num >= right_num);
-            if (op == "EQ")
-                return ValueWrapper(left_num == right_num);
-            if (op == "NEQ")
-                return ValueWrapper(left_num != right_num);
-        }
-        else if (std::holds_alternative<std::string>(left_value.data) &&
-                 std::holds_alternative<std::string>(right_value.data))
-        {
-            std::string left_str = std::get<std::string>(left_value.data);
-            std::string right_str = std::get<std::string>(right_value.data);
-            if (op == "EQ")
-                return ValueWrapper(left_str == right_str);
-            if (op == "NEQ")
-                return ValueWrapper(left_str != right_str);
-        }
-        LOG_DEBUG("Interpreter: Erro, tipos incompatíveis para operador relacional: " << op);
-        throw RunTimeError("Operador relacional '" + op + "' requer operandos numéricos ou strings compatíveis");
+        return evaluateRelational(relational);
     }
-    // 7. Operações Aritméticas (soma, subtração, multiplicação, divisão)
     else if (auto *arithmetic = dynamic_cast<Arithmetic *>(expr))
     {
-        LOG_DEBUG("Interpreter: Avaliando operação aritmética");
-        if (!arithmetic->getLeft() || !arithmetic->getRight())
-        {
-            LOG_DEBUG("Interpreter: Operando nulo em expressão aritmética");
-            throw RunTimeError("Operando nulo em expressão aritmética");
-        }
-        ValueWrapper left_value = evaluate(arithmetic->getLeft());
-        ValueWrapper right_value = evaluate(arithmetic->getRight());
-        std::string op = arithmetic->getToken().getTag();
-        LOG_DEBUG("Interpreter: Operação aritmética: " << convert_value_to_string(left_value)
-                                                       << " " << op << " " << convert_value_to_string(right_value));
-
-        if (std::holds_alternative<double>(left_value.data) && std::holds_alternative<double>(right_value.data))
-        {
-            double left_num = std::get<double>(left_value.data);
-            double right_num = std::get<double>(right_value.data);
-            if (op == "+")
-                return ValueWrapper(left_num + right_num);
-            if (op == "-")
-                return ValueWrapper(left_num - right_num);
-            if (op == "*")
-                return ValueWrapper(left_num * right_num);
-            if (op == "/")
-            {
-                if (right_num == 0)
-                {
-                    LOG_DEBUG("Interpreter: Erro, divisão por zero");
-                    throw RunTimeError("Divisão por zero");
-                }
-                return ValueWrapper(left_num / right_num);
-            }
-        }
-        LOG_DEBUG("Interpreter: Erro, tipos inválidos para operador aritmético: " << op);
-        throw RunTimeError("Operador aritmético '" + op + "' requer operandos numéricos");
+        return evaluateArithmetic(arithmetic);
     }
-    // 8. Operações Unárias (ex.: negação, negação lógica)
     else if (auto *unary = dynamic_cast<Unary *>(expr))
     {
-        LOG_DEBUG("Interpreter: Avaliando operação unária");
-        if (!unary->getExpr())
-        {
-            LOG_DEBUG("Interpreter: Expressão nula em operação unária");
-            throw RunTimeError("Expressão nula em operação unária");
-        }
-        std::string op = unary->getToken().getTag();
-        LOG_DEBUG("Interpreter: Operação unária: " << op);
-
-        if (op == "INC" || op == "DEC")
-        {
-            Expression *operand = unary->getExpr();
-            ValueWrapper result;
-
-            // Caso 1: Operando é um ID (variável simples)
-            if (auto *id = dynamic_cast<ID *>(operand))
-            {
-                std::string var_name = id->getToken().getValue();
-                ValueWrapper *var_ptr = nullptr;
-                for (auto it = scopes.rbegin(); it != scopes.rend(); ++it)
-                {
-                    auto var_it = it->variables.find(var_name);
-                    if (var_it != it->variables.end())
-                    {
-                        var_ptr = &var_it->second;
-                        break;
-                    }
-                }
-                if (!var_ptr)
-                {
-                    throw RunTimeError("Variável não definida: " + var_name);
-                }
-                if (!std::holds_alternative<double>(var_ptr->data))
-                {
-                    throw RunTimeError("Operadores ++ e -- requerem uma variável numérica");
-                }
-                double &value = std::get<double>(var_ptr->data);
-                if (unary->isPostfix()) // x++ ou x--
-                {
-                    result = ValueWrapper(value);
-                    if (op == "INC")
-                        value += 1.0;
-                    else
-                        value -= 1.0;
-                }
-                else // ++x ou --x
-                {
-                    if (op == "INC")
-                        value += 1.0;
-                    else
-                        value -= 1.0;
-                    result = ValueWrapper(value);
-                }
-                LOG_DEBUG("Interpreter: " << var_name << " " << (unary->isPostfix() ? "pós" : "pré") << "-fixado: " << value);
-                return result;
-            }
-            // Caso 2: Operando é um Access (posição de array)
-            else if (auto *access = dynamic_cast<Access *>(operand))
-            {
-                if (!access->getId() || !access->getExpr())
-                {
-                    throw RunTimeError("Acesso com base ou índice nulo");
-                }
-                std::string base_name = access->getId()->getToken().getValue();
-                ValueWrapper index_val = evaluate(access->getExpr());
-                if (!std::holds_alternative<double>(index_val.data))
-                {
-                    throw RunTimeError("Índice deve ser um número");
-                }
-                int index = static_cast<int>(std::get<double>(index_val.data));
-
-                ValueWrapper *base_ptr = nullptr;
-                for (auto it = scopes.rbegin(); it != scopes.rend(); ++it)
-                {
-                    auto var_it = it->variables.find(base_name);
-                    if (var_it != it->variables.end())
-                    {
-                        base_ptr = &var_it->second;
-                        break;
-                    }
-                }
-                if (!base_ptr)
-                {
-                    throw RunTimeError("Array não definido: " + base_name);
-                }
-                if (!std::holds_alternative<std::vector<ValueWrapper>>(base_ptr->data))
-                {
-                    throw RunTimeError(base_name + " não é um array");
-                }
-                auto &arr = std::get<std::vector<ValueWrapper>>(base_ptr->data);
-                if (index < 0 || index >= arr.size())
-                {
-                    throw RunTimeError("Índice " + std::to_string(index) + " fora do intervalo para " + base_name);
-                }
-                if (!std::holds_alternative<double>(arr[index].data))
-                {
-                    throw RunTimeError("Elemento no índice " + std::to_string(index) + " não é numérico");
-                }
-                double &value = std::get<double>(arr[index].data);
-                if (unary->isPostfix())
-                {
-                    result = ValueWrapper(value);
-                    if (op == "INC")
-                        value += 1.0;
-                    else
-                        value -= 1.0;
-                }
-                else // ++arr[6] ou --arr[6]
-                {
-                    if (op == "INC")
-                        value += 1.0;
-                    else
-                        value -= 1.0;
-                    result = ValueWrapper(value);
-                }
-                LOG_DEBUG("Interpreter: " << base_name << "[" << index << "] " << (unary->isPostfix() ? "pós" : "pré") << "-fixado: " << value);
-                return result;
-            }
-            throw RunTimeError("Operadores ++ e -- só podem ser aplicados a variáveis ou posições de array");
-        }
-        else if (op == "-")
-        {
-            ValueWrapper value = evaluate(unary->getExpr());
-            if (std::holds_alternative<double>(value.data))
-            {
-                return ValueWrapper(-std::get<double>(value.data));
-            }
-            throw RunTimeError("Operador unário '-' aplicado a tipo não numérico");
-        }
-        else if (op == "!")
-        {
-            ValueWrapper value = evaluate(unary->getExpr());
-            return ValueWrapper(!is_true(value));
-        }
-        throw RunTimeError("Operador unário não suportado: " + op);
+        return evaluateUnary(unary);
     }
-    // 9. Operações Lógicas (AND, OR)
     else if (auto *logical = dynamic_cast<Logical *>(expr))
     {
-        LOG_DEBUG("Interpreter: Avaliando operação lógica");
-        if (!logical->getLeft() || !logical->getRight())
-        {
-            LOG_DEBUG("Interpreter: Operando nulo em expressão lógica");
-            throw RunTimeError("Operando nulo em expressão lógica");
-        }
-        ValueWrapper left_value = evaluate(logical->getLeft());
-        std::string op = logical->getToken().getTag();
-        LOG_DEBUG("Interpreter: Operação lógica: " << convert_value_to_string(left_value)
-                                                   << " " << op);
-
-        if (op == "AND")
-        {
-            if (!is_true(left_value))
-                return ValueWrapper(false);
-            ValueWrapper right_value = evaluate(logical->getRight());
-            return ValueWrapper(is_true(right_value));
-        }
-        else if (op == "OR")
-        {
-            if (is_true(left_value))
-                return ValueWrapper(true);
-            ValueWrapper right_value = evaluate(logical->getRight());
-            return ValueWrapper(is_true(right_value));
-        }
-        LOG_DEBUG("Interpreter: Erro, operador lógico não suportado: " << op);
-        throw RunTimeError("Operador lógico não suportado: " + op);
+        return evaluateLogical(logical);
     }
 
     LOG_DEBUG("Interpreter: Erro, tipo de expressão não suportado");
     throw RunTimeError("Expressão não suportada");
+}
+
+ValueWrapper Interpreter::evaluateID(ID *id)
+{
+    std::string var_name = id->getToken().getValue();
+    LOG_DEBUG("Interpreter: Avaliando ID: " << var_name);
+    for (auto it = scopes.rbegin(); it != scopes.rend(); ++it)
+    {
+        auto var_it = it->variables.find(var_name);
+        if (var_it != it->variables.end())
+        {
+            LOG_DEBUG("Interpreter: Variável " << var_name << " encontrada no escopo atual");
+            return var_it->second;
+        }
+    }
+    LOG_DEBUG("Interpreter: Erro, variável não definida: " << var_name);
+    throw RunTimeError("Variável não definida: " + var_name);
+}
+
+ValueWrapper Interpreter::evaluateConstant(Constant *constant)
+{
+    std::string valueStr = constant->getToken().getValue();
+    std::string typeStr = constant->getType();
+    LOG_DEBUG("Interpreter: Constante detectada, tipo: " << typeStr << ", valor: " << valueStr);
+    if (typeStr == "NUM")
+    {
+        double num = std::stod(valueStr);
+        LOG_DEBUG("Interpreter: Convertendo num para double: " << num);
+        return ValueWrapper(num);
+    }
+    else if (typeStr == "STRING")
+    {
+        LOG_DEBUG("Interpreter: Retornando STRING: " << valueStr);
+        return ValueWrapper(valueStr);
+    }
+    else if (typeStr == "BOOL")
+    {
+        bool result = valueStr == "true";
+        LOG_DEBUG("Interpreter: Convertendo BOOL: " << result);
+        return ValueWrapper(result);
+    }
+
+    LOG_DEBUG("Interpreter: Erro, tipo de constante não suportado: " << typeStr);
+    throw RunTimeError("Tipo de constante não suportado: " + typeStr);
+}
+
+ValueWrapper Interpreter::evaluateArray(Array *array)
+{
+    std::vector<ValueWrapper> elements;
+    for (const auto &elem : array->getElements())
+    {
+        if (!elem)
+        {
+            LOG_DEBUG("Interpreter: Elemento nulo no array");
+            throw RunTimeError("Elemento nulo no array");
+        }
+        ValueWrapper elem_value = evaluate(elem.get());
+        if (!elem_value.isInitialized())
+        {
+            LOG_DEBUG("Interpreter: Elemento do array não inicializado");
+            throw RunTimeError("Elemento do array não inicializado");
+        }
+        LOG_DEBUG("Interpreter: Elemento avaliado: " << convert_value_to_string(elem_value));
+        elements.push_back(elem_value);
+    }
+    LOG_DEBUG("Interpreter: Array avaliado com " << elements.size() << " elementos");
+    return ValueWrapper(elements);
+}
+
+ValueWrapper Interpreter::evaluateAccess(Access *access)
+{
+    if (!access->getId() || !access->getExpr())
+    {
+        LOG_DEBUG("Interpreter: Acesso com base ou índice nulo");
+        throw RunTimeError("Acesso com base ou índice nulo");
+    }
+    ValueWrapper base_val = evaluate(access->getId());
+    ValueWrapper index_val = evaluate(access->getExpr());
+
+    // Acesso a array por índice numérico
+    if (std::holds_alternative<std::vector<ValueWrapper>>(base_val.data) &&
+        std::holds_alternative<double>(index_val.data))
+    {
+        int index = static_cast<int>(std::get<double>(index_val.data));
+        auto &arr = std::get<std::vector<ValueWrapper>>(base_val.data);
+        if (index >= 0 && index < static_cast<int>(arr.size()))
+        {
+            LOG_DEBUG("Interpreter: Acesso a array no índice " << index);
+            return arr[index];
+        }
+        LOG_DEBUG("Interpreter: Erro, índice fora do intervalo: " << index);
+        throw RunTimeError("Índice " + std::to_string(index) + " fora do intervalo");
+    }
+    // Acesso a string por índice numérico
+    else if (std::holds_alternative<std::string>(base_val.data) &&
+             std::holds_alternative<double>(index_val.data))
+    {
+        std::string str = std::get<std::string>(base_val.data);
+        int index = static_cast<int>(std::get<double>(index_val.data));
+        LOG_DEBUG("Interpreter: Acesso a string '" << str << "' no índice: " << index);
+        if (index >= 0 && index < static_cast<int>(str.length()))
+        {
+            std::string result(1, str[index]);
+            LOG_DEBUG("Interpreter: Resultado do acesso: " << result);
+            return ValueWrapper(result);
+        }
+        LOG_DEBUG("Interpreter: Erro, índice fora do intervalo: " << index);
+        throw RunTimeError("Índice fora do intervalo: " + std::to_string(index));
+    }
+    LOG_DEBUG("Interpreter: Erro, tipo inválido para acesso");
+    throw RunTimeError("Tipo inválido para acesso");
+}
+
+ValueWrapper Interpreter::evaluateFunctionCall(Call *call)
+{
+    if (!call->getId())
+    {
+        LOG_DEBUG("Interpreter: Chamada de função com identificador nulo");
+        throw RunTimeError("Chamada de função com identificador nulo");
+    }
+
+    std::string func_name = call->getId()->getToken().getValue();
+    LOG_DEBUG("Interpreter: Avaliando chamada de função: " << func_name);
+    // funções internas
+    if (func_name == "print")
+    {
+        for (const auto &arg : call->getArgs())
+        {
+            if (!arg)
+            {
+                LOG_DEBUG("Interpreter: Argumento nulo em print");
+                throw RunTimeError("Argumento nulo em print");
+            }
+            ValueWrapper value = evaluate(arg.get());
+            LOG_DEBUG("Interpreter: Argumento para print: " << convert_value_to_string(value));
+            std::visit([](auto &&val)
+                       {
+                using T = std::decay_t<decltype(val)>;
+                if constexpr (std::is_same_v<T, std::monostate>) {
+                    std::cout << "[uninitialized]" << std::endl;
+                }
+                else if constexpr (std::is_same_v<T, double>) {
+                    std::cout << val << std::endl;
+                }
+                else if constexpr (std::is_same_v<T, bool>) {
+                    std::cout << (val ? "true" : "false") << std::endl;
+                }
+                else if constexpr (std::is_same_v<T, std::string>) {
+                    std::cout << val << std::endl;
+                }
+                else if constexpr (std::is_same_v<T, std::vector<ValueWrapper>>) {
+                    std::cout << "[";
+                    bool first = true;
+                    for (const auto &elem : val) {
+                        if (!first) std::cout << ", ";
+                        std::cout << elem;
+                        first = false;
+                    }
+                    std::cout << "]" << std::endl;
+                } }, value.data);
+        }
+        LOG_DEBUG("Interpreter: print concluído, retornando string vazia");
+        return ValueWrapper(std::string(""));
+    }
+    else if (func_name == "len")
+    {
+        if (call->getArgs().empty() || !call->getArgs()[0])
+        {
+            LOG_DEBUG("Interpreter: len chamado sem argumento válido");
+            throw RunTimeError("len requer um argumento válido");
+        }
+        ValueWrapper arg = evaluate(call->getArgs()[0].get());
+        if (std::holds_alternative<std::string>(arg.data))
+        {
+            double length = static_cast<double>(std::get<std::string>(arg.data).length());
+            LOG_DEBUG("Interpreter: len retornando: " << length);
+            return ValueWrapper(length);
+        }
+        else if (std::holds_alternative<std::vector<ValueWrapper>>(arg.data))
+        {
+            double length = static_cast<double>(std::get<std::vector<ValueWrapper>>(arg.data).size());
+            LOG_DEBUG("Interpreter: len retornando: " << length);
+            return ValueWrapper(length);
+        }
+        LOG_DEBUG("Interpreter: Erro, len requer string ou array");
+        throw RunTimeError("len requer uma string ou array como argumento");
+    }
+    else if (func_name == "to_num")
+    {
+        if (call->getArgs().empty() || !call->getArgs()[0])
+        {
+            LOG_DEBUG("Interpreter: to_num chamado sem argumento válido");
+            throw RunTimeError("to_num requer um argumento válido");
+        }
+        ValueWrapper arg = evaluate(call->getArgs()[0].get());
+        if (std::holds_alternative<std::string>(arg.data))
+        {
+            double num = std::stod(std::get<std::string>(arg.data));
+            LOG_DEBUG("Interpreter: to_num retornando: " << num);
+            return ValueWrapper(num);
+        }
+        LOG_DEBUG("Interpreter: Erro, to_num requer string");
+        throw RunTimeError("to_num requer uma string como argumento");
+    }
+    else if (func_name == "to_string")
+    {
+        if (call->getArgs().empty() || !call->getArgs()[0])
+        {
+            LOG_DEBUG("Interpreter: to_string chamado sem argumento válido");
+            throw RunTimeError("to_string requer um argumento válido");
+        }
+        ValueWrapper arg = evaluate(call->getArgs()[0].get());
+        std::string result = convert_value_to_string(arg);
+        LOG_DEBUG("Interpreter: to_string retornando: " << result);
+        return ValueWrapper(result);
+    }
+    else if (func_name == "isnum")
+    {
+        if (call->getArgs().empty() || !call->getArgs()[0])
+        {
+            LOG_DEBUG("Interpreter: isnum chamado sem argumento válido");
+            throw RunTimeError("isnum requer um argumento válido");
+        }
+        ValueWrapper arg = evaluate(call->getArgs()[0].get());
+        if (std::holds_alternative<std::string>(arg.data))
+        {
+            std::string str = std::get<std::string>(arg.data);
+            bool result = std::all_of(str.begin(), str.end(), ::isdigit);
+            LOG_DEBUG("Interpreter: isnum retornando: " << (result ? "true" : "false"));
+            return ValueWrapper(result);
+        }
+        LOG_DEBUG("Interpreter: isnum retornando false (não é string)");
+        return ValueWrapper(false);
+    }
+    else if (func_name == "isalpha")
+    {
+        if (call->getArgs().empty() || !call->getArgs()[0])
+        {
+            LOG_DEBUG("Interpreter: isalpha chamado sem argumento válido");
+            throw RunTimeError("isalpha requer um argumento válido");
+        }
+        ValueWrapper arg = evaluate(call->getArgs()[0].get());
+        if (std::holds_alternative<std::string>(arg.data))
+        {
+            std::string str = std::get<std::string>(arg.data);
+            bool result = std::all_of(str.begin(), str.end(), ::isalpha);
+            LOG_DEBUG("Interpreter: isalpha retornando: " << (result ? "true" : "false"));
+            return ValueWrapper(result);
+        }
+        LOG_DEBUG("Interpreter: isalpha retornando false (não é string)");
+        return ValueWrapper(false);
+    }
+    else if (functions.find(func_name) != functions.end())
+    {
+        ValueWrapper result = execute_function(functions[func_name], call->getArgs());
+        LOG_DEBUG("Interpreter: Função definida pelo usuário " << func_name << " retornou valor");
+        return result;
+    }
+    LOG_DEBUG("Interpreter: Erro, função não suportada: " << func_name);
+    throw RunTimeError("Função não suportada: " + func_name);
+}
+
+ValueWrapper Interpreter::evaluateRelational(Relational *relational)
+{
+    LOG_DEBUG("Interpreter: Avaliando operação relacional");
+    if (!relational->getLeft() || !relational->getRight())
+    {
+        LOG_DEBUG("Interpreter: Operando nulo em expressão relacional");
+        throw RunTimeError("Operando nulo em expressão relacional");
+    }
+    ValueWrapper left_value = evaluate(relational->getLeft());
+    ValueWrapper right_value = evaluate(relational->getRight());
+    std::string op = relational->getToken().getTag();
+    LOG_DEBUG("Interpreter: Operação relacional: " << convert_value_to_string(left_value)
+                                                   << " " << op << " " << convert_value_to_string(right_value));
+
+    if (std::holds_alternative<double>(left_value.data) && std::holds_alternative<double>(right_value.data))
+    {
+        double left_num = std::get<double>(left_value.data);
+        double right_num = std::get<double>(right_value.data);
+        if (op == "<")
+            return ValueWrapper(left_num < right_num);
+        if (op == ">")
+            return ValueWrapper(left_num > right_num);
+        if (op == "LTE")
+            return ValueWrapper(left_num <= right_num);
+        if (op == "GTE")
+            return ValueWrapper(left_num >= right_num);
+        if (op == "EQ")
+            return ValueWrapper(left_num == right_num);
+        if (op == "NEQ")
+            return ValueWrapper(left_num != right_num);
+    }
+    else if (std::holds_alternative<std::string>(left_value.data) &&
+             std::holds_alternative<std::string>(right_value.data))
+    {
+        std::string left_str = std::get<std::string>(left_value.data);
+        std::string right_str = std::get<std::string>(right_value.data);
+        if (op == "EQ")
+            return ValueWrapper(left_str == right_str);
+        if (op == "NEQ")
+            return ValueWrapper(left_str != right_str);
+    }
+    LOG_DEBUG("Interpreter: Erro, tipos incompatíveis para operador relacional: " << op);
+    throw RunTimeError("Operador relacional '" + op + "' requer operandos numéricos ou strings compatíveis");
+}
+
+ValueWrapper Interpreter::evaluateArithmetic(Arithmetic *arithmetic)
+{
+    LOG_DEBUG("Interpreter: Avaliando operação aritmética");
+    if (!arithmetic->getLeft() || !arithmetic->getRight())
+    {
+        LOG_DEBUG("Interpreter: Operando nulo em expressão aritmética");
+        throw RunTimeError("Operando nulo em expressão aritmética");
+    }
+    ValueWrapper left_value = evaluate(arithmetic->getLeft());
+    ValueWrapper right_value = evaluate(arithmetic->getRight());
+    std::string op = arithmetic->getToken().getTag();
+    LOG_DEBUG("Interpreter: Operação aritmética: " << convert_value_to_string(left_value)
+                                                   << " " << op << " " << convert_value_to_string(right_value));
+
+    if (std::holds_alternative<double>(left_value.data) && std::holds_alternative<double>(right_value.data))
+    {
+        double left_num = std::get<double>(left_value.data);
+        double right_num = std::get<double>(right_value.data);
+        if (op == "+")
+            return ValueWrapper(left_num + right_num);
+        if (op == "-")
+            return ValueWrapper(left_num - right_num);
+        if (op == "*")
+            return ValueWrapper(left_num * right_num);
+        if (op == "/")
+        {
+            if (right_num == 0)
+            {
+                LOG_DEBUG("Interpreter: Erro, divisão por zero");
+                throw RunTimeError("Divisão por zero");
+            }
+            return ValueWrapper(left_num / right_num);
+        }
+    }
+    LOG_DEBUG("Interpreter: Erro, tipos inválidos para operador aritmético: " << op);
+    throw RunTimeError("Operador aritmético '" + op + "' requer operandos numéricos");
+}
+
+ValueWrapper Interpreter::evaluateUnary(Unary *unary)
+{
+    LOG_DEBUG("Interpreter: Avaliando operação unária");
+    if (!unary->getExpr())
+    {
+        LOG_DEBUG("Interpreter: Expressão nula em operação unária");
+        throw RunTimeError("Expressão nula em operação unária");
+    }
+    std::string op = unary->getToken().getTag();
+    LOG_DEBUG("Interpreter: Operação unária: " << op);
+
+    if (op == "INC" || op == "DEC")
+    {
+        Expression *operand = unary->getExpr();
+        ValueWrapper result;
+
+        // Caso 1: Operando é um ID (variável simples)
+        if (auto *id = dynamic_cast<ID *>(operand))
+        {
+            std::string var_name = id->getToken().getValue();
+            ValueWrapper *var_ptr = nullptr;
+            for (auto it = scopes.rbegin(); it != scopes.rend(); ++it)
+            {
+                auto var_it = it->variables.find(var_name);
+                if (var_it != it->variables.end())
+                {
+                    var_ptr = &var_it->second;
+                    break;
+                }
+            }
+            if (!var_ptr)
+            {
+                throw RunTimeError("Variável não definida: " + var_name);
+            }
+            if (!std::holds_alternative<double>(var_ptr->data))
+            {
+                throw RunTimeError("Operadores ++ e -- requerem uma variável numérica");
+            }
+            double &value = std::get<double>(var_ptr->data);
+            if (unary->isPostfix()) // x++ ou x--
+            {
+                result = ValueWrapper(value);
+                if (op == "INC")
+                    value += 1.0;
+                else
+                    value -= 1.0;
+            }
+            else // ++x ou --x
+            {
+                if (op == "INC")
+                    value += 1.0;
+                else
+                    value -= 1.0;
+                result = ValueWrapper(value);
+            }
+            LOG_DEBUG("Interpreter: " << var_name << " " << (unary->isPostfix() ? "pós" : "pré") << "-fixado: " << value);
+            return result;
+        }
+        // Caso 2: Operando é um Access (posição de array)
+        else if (auto *access = dynamic_cast<Access *>(operand))
+        {
+            if (!access->getId() || !access->getExpr())
+            {
+                throw RunTimeError("Acesso com base ou índice nulo");
+            }
+            std::string base_name = access->getId()->getToken().getValue();
+            ValueWrapper index_val = evaluate(access->getExpr());
+            if (!std::holds_alternative<double>(index_val.data))
+            {
+                throw RunTimeError("Índice deve ser um número");
+            }
+            int index = static_cast<int>(std::get<double>(index_val.data));
+
+            ValueWrapper *base_ptr = nullptr;
+            for (auto it = scopes.rbegin(); it != scopes.rend(); ++it)
+            {
+                auto var_it = it->variables.find(base_name);
+                if (var_it != it->variables.end())
+                {
+                    base_ptr = &var_it->second;
+                    break;
+                }
+            }
+            if (!base_ptr)
+            {
+                throw RunTimeError("Array não definido: " + base_name);
+            }
+            if (!std::holds_alternative<std::vector<ValueWrapper>>(base_ptr->data))
+            {
+                throw RunTimeError(base_name + " não é um array");
+            }
+            auto &arr = std::get<std::vector<ValueWrapper>>(base_ptr->data);
+            if (index < 0 || index >= arr.size())
+            {
+                throw RunTimeError("Índice " + std::to_string(index) + " fora do intervalo para " + base_name);
+            }
+            if (!std::holds_alternative<double>(arr[index].data))
+            {
+                throw RunTimeError("Elemento no índice " + std::to_string(index) + " não é numérico");
+            }
+            double &value = std::get<double>(arr[index].data);
+            if (unary->isPostfix())
+            {
+                result = ValueWrapper(value);
+                if (op == "INC")
+                    value += 1.0;
+                else
+                    value -= 1.0;
+            }
+            else // ++arr[6] ou --arr[6]
+            {
+                if (op == "INC")
+                    value += 1.0;
+                else
+                    value -= 1.0;
+                result = ValueWrapper(value);
+            }
+            LOG_DEBUG("Interpreter: " << base_name << "[" << index << "] " << (unary->isPostfix() ? "pós" : "pré") << "-fixado: " << value);
+            return result;
+        }
+        throw RunTimeError("Operadores ++ e -- só podem ser aplicados a variáveis ou posições de array");
+    }
+    else if (op == "-")
+    {
+        ValueWrapper value = evaluate(unary->getExpr());
+        if (std::holds_alternative<double>(value.data))
+        {
+            return ValueWrapper(-std::get<double>(value.data));
+        }
+        throw RunTimeError("Operador unário '-' aplicado a tipo não numérico");
+    }
+    else if (op == "!")
+    {
+        ValueWrapper value = evaluate(unary->getExpr());
+        return ValueWrapper(!is_true(value));
+    }
+    throw RunTimeError("Operador unário não suportado: " + op);
+}
+
+ValueWrapper Interpreter::evaluateLogical(Logical *logical)
+{
+    LOG_DEBUG("Interpreter: Avaliando operação lógica");
+    if (!logical->getLeft() || !logical->getRight())
+    {
+        LOG_DEBUG("Interpreter: Operando nulo em expressão lógica");
+        throw RunTimeError("Operando nulo em expressão lógica");
+    }
+    ValueWrapper left_value = evaluate(logical->getLeft());
+    std::string op = logical->getToken().getTag();
+    LOG_DEBUG("Interpreter: Operação lógica: " << convert_value_to_string(left_value)
+                                               << " " << op);
+
+    if (op == "AND")
+    {
+        if (!is_true(left_value))
+            return ValueWrapper(false);
+        ValueWrapper right_value = evaluate(logical->getRight());
+        return ValueWrapper(is_true(right_value));
+    }
+    else if (op == "OR")
+    {
+        if (is_true(left_value))
+            return ValueWrapper(true);
+        ValueWrapper right_value = evaluate(logical->getRight());
+        return ValueWrapper(is_true(right_value));
+    }
+    LOG_DEBUG("Interpreter: Erro, operador lógico não suportado: " << op);
+    throw RunTimeError("Operador lógico não suportado: " + op);
 }
 
 /**
@@ -847,31 +883,79 @@ void Interpreter::execute_stmt(Node *stmt)
         if (auto *id = dynamic_cast<ID *>(left))
         {
             std::string var_name = id->getToken().getValue();
-            auto it = scopes.back().variables.find(var_name);
-            // Se a variável já for um array, atualiza os elementos sem sobrescrever seu tamanho
-            if (it != scopes.back().variables.end() && std::holds_alternative<std::vector<ValueWrapper>>(it->second.data))
+
+            // Verificar primeiro o escopo atual
+            auto &current_scope = scopes.back();
+            auto var_it = current_scope.variables.find(var_name);
+
+            // Se a variável já existe no escopo atual
+            if (var_it != current_scope.variables.end())
             {
-                auto &arr = std::get<std::vector<ValueWrapper>>(it->second.data);
-                if (std::holds_alternative<std::vector<ValueWrapper>>(value.data))
+                // Se for um array, atualizar os elementos
+                if (std::holds_alternative<std::vector<ValueWrapper>>(var_it->second.data))
                 {
-                    const auto &new_elements = std::get<std::vector<ValueWrapper>>(value.data);
-                    size_t copy_size = std::min(new_elements.size(), arr.size());
-                    for (size_t i = 0; i < copy_size; ++i)
+                    auto &arr = std::get<std::vector<ValueWrapper>>(var_it->second.data);
+                    if (std::holds_alternative<std::vector<ValueWrapper>>(value.data))
                     {
-                        arr[i] = new_elements[i]; // Copia os novos valores
+                        const auto &new_elements = std::get<std::vector<ValueWrapper>>(value.data);
+                        size_t copy_size = std::min(new_elements.size(), arr.size());
+                        for (size_t i = 0; i < copy_size; ++i)
+                        {
+                            arr[i] = new_elements[i];
+                        }
+                        LOG_DEBUG("Interpreter: Atualizando array " << var_name << " com " << copy_size << " elementos no escopo local");
                     }
-                    LOG_DEBUG("Interpreter: Atualizando " << var_name << " com " << copy_size << " elementos");
+                    else
+                    {
+                        throw RunTimeError("Tentativa de atribuir valor não-array a um array existente");
+                    }
                 }
                 else
                 {
-                    throw RunTimeError("Tentativa de atribuir valor não-array a um array existente");
+                    // Atribuição normal no escopo atual
+                    var_it->second = value;
+                    LOG_DEBUG("Interpreter: Atribuindo " << var_name << " = " << convert_value_to_string(value) << " no escopo local (existente)");
                 }
             }
             else
             {
-                // Atribuição normal para nova variável ou variável não-array
-                scopes.back().variables[var_name] = value;
-                LOG_DEBUG("Interpreter: Atribuindo " << var_name << " = " << convert_value_to_string(value));
+                // Buscar nos escopos superiores para atualização
+                for (auto it = scopes.rbegin(); it != scopes.rend(); ++it)
+                {
+                    auto var_it = it->variables.find(var_name);
+                    if (var_it != it->variables.end())
+                    {
+                        // Se for um array, atualizar os elementos
+                        if (std::holds_alternative<std::vector<ValueWrapper>>(var_it->second.data))
+                        {
+                            auto &arr = std::get<std::vector<ValueWrapper>>(var_it->second.data);
+                            if (std::holds_alternative<std::vector<ValueWrapper>>(value.data))
+                            {
+                                const auto &new_elements = std::get<std::vector<ValueWrapper>>(value.data);
+                                size_t copy_size = std::min(new_elements.size(), arr.size());
+                                for (size_t i = 0; i < copy_size; ++i)
+                                {
+                                    arr[i] = new_elements[i];
+                                }
+                                LOG_DEBUG("Interpreter: Atualizando array " << var_name << " com " << copy_size << " elementos no escopo existente");
+                            }
+                            else
+                            {
+                                throw RunTimeError("Tentativa de atribuir valor não-array a um array existente");
+                            }
+                        }
+                        else
+                        {
+                            // Atribuição normal no escopo onde a variável existe
+                            var_it->second = value;
+                            LOG_DEBUG("Interpreter: Atribuindo " << var_name << " = " << convert_value_to_string(value) << " no escopo existente");
+                        }
+                        return; // Sai após atualizar
+                    }
+                }
+                // Se não encontrada, criar no escopo atual
+                current_scope.variables[var_name] = value;
+                LOG_DEBUG("Interpreter: Atribuindo " << var_name << " = " << convert_value_to_string(value) << " no escopo local (nova variável)");
             }
         }
         // Caso o lado esquerdo seja um acesso a elemento (array ou string)
@@ -883,52 +967,53 @@ void Interpreter::execute_stmt(Node *stmt)
             if (std::holds_alternative<double>(index_val.data))
             {
                 int index = static_cast<int>(std::get<double>(index_val.data));
-                auto it = scopes.back().variables.find(base_name);
-                if (it != scopes.back().variables.end())
+                for (auto it = scopes.rbegin(); it != scopes.rend(); ++it)
                 {
-                    ValueWrapper &base_val = it->second;
-                    if (std::holds_alternative<std::vector<ValueWrapper>>(base_val.data))
+                    auto var_it = it->variables.find(base_name);
+                    if (var_it != it->variables.end())
                     {
-                        auto &arr = std::get<std::vector<ValueWrapper>>(base_val.data);
-                        if (index >= 0 && index < arr.size())
+                        ValueWrapper &base_val = var_it->second;
+                        if (std::holds_alternative<std::vector<ValueWrapper>>(base_val.data))
                         {
-                            arr[index] = value;
-                            LOG_DEBUG("Interpreter: Atribuindo " << base_name << "[" << index << "] = " << convert_value_to_string(value));
-                        }
-                        else
-                        {
-                            throw RunTimeError("Índice " + std::to_string(index) + " fora do intervalo para o array " + base_name);
-                        }
-                    }
-                    else if (std::holds_alternative<std::string>(base_val.data))
-                    {
-                        std::string &str = std::get<std::string>(base_val.data);
-                        if (index >= 0 && index < str.length())
-                        {
-                            if (std::holds_alternative<std::string>(value.data) && std::get<std::string>(value.data).length() == 1)
+                            auto &arr = std::get<std::vector<ValueWrapper>>(base_val.data);
+                            if (index >= 0 && index < arr.size())
                             {
-                                str[index] = std::get<std::string>(value.data)[0];
+                                arr[index] = value;
                                 LOG_DEBUG("Interpreter: Atribuindo " << base_name << "[" << index << "] = " << convert_value_to_string(value));
                             }
                             else
                             {
-                                throw RunTimeError("Atribuição a string requer um caractere");
+                                throw RunTimeError("Índice " + std::to_string(index) + " fora do intervalo para o array " + base_name);
+                            }
+                        }
+                        else if (std::holds_alternative<std::string>(base_val.data))
+                        {
+                            std::string &str = std::get<std::string>(base_val.data);
+                            if (index >= 0 && index < str.length())
+                            {
+                                if (std::holds_alternative<std::string>(value.data) && std::get<std::string>(value.data).length() == 1)
+                                {
+                                    str[index] = std::get<std::string>(value.data)[0];
+                                    LOG_DEBUG("Interpreter: Atribuindo " << base_name << "[" << index << "] = " << convert_value_to_string(value));
+                                }
+                                else
+                                {
+                                    throw RunTimeError("Atribuição a string requer um caractere");
+                                }
+                            }
+                            else
+                            {
+                                throw RunTimeError("Índice " + std::to_string(index) + " fora do intervalo para a string " + base_name);
                             }
                         }
                         else
                         {
-                            throw RunTimeError("Índice " + std::to_string(index) + " fora do intervalo para a string " + base_name);
+                            throw RunTimeError(base_name + " não é um array nem uma string");
                         }
-                    }
-                    else
-                    {
-                        throw RunTimeError(base_name + " não é um array nem uma string");
+                        return;
                     }
                 }
-                else
-                {
-                    throw RunTimeError("Variável " + base_name + " não definida");
-                }
+                throw RunTimeError("Variável " + base_name + " não definida");
             }
             else
             {
@@ -947,24 +1032,22 @@ void Interpreter::execute_stmt(Node *stmt)
     }
     else if (auto *func_def = dynamic_cast<FuncDef *>(stmt))
     {
-        // Registra a função definida no mapa de funções
         functions[func_def->getName()] = func_def;
         LOG_DEBUG("Interpreter: Definindo função: " << func_def->getName());
     }
     else if (auto *ret = dynamic_cast<Return *>(stmt))
     {
-        // Avalia a expressão de retorno e define a flag de retorno
         return_value = evaluate(ret->getExpr());
         return_flag = true;
         LOG_DEBUG("Interpreter: Retorno definido: " << convert_value_to_string(return_value));
     }
     else if (auto *if_stmt = dynamic_cast<If *>(stmt))
     {
-        // Avalia a condição do IF e executa o bloco correspondente
         ValueWrapper cond_value = evaluate(if_stmt->getCondition());
         LOG_DEBUG("Interpreter: Avaliando IF, condição: " << convert_value_to_string(cond_value));
         if (is_true(cond_value))
         {
+            push_scope();
             LOG_DEBUG("Interpreter: Executando corpo do IF");
             for (const auto &stmt_ptr : if_stmt->getBody())
             {
@@ -972,9 +1055,11 @@ void Interpreter::execute_stmt(Node *stmt)
                 if (return_flag || break_flag || continue_flag)
                     break;
             }
+            pop_scope();
         }
         else if (if_stmt->getElseStmt())
         {
+            push_scope();
             LOG_DEBUG("Interpreter: Executando corpo do ELSE");
             for (const auto &stmt_ptr : *if_stmt->getElseStmt())
             {
@@ -982,6 +1067,7 @@ void Interpreter::execute_stmt(Node *stmt)
                 if (return_flag || break_flag || continue_flag)
                     break;
             }
+            pop_scope();
         }
     }
     else if (auto *while_stmt = dynamic_cast<While *>(stmt))
@@ -996,19 +1082,22 @@ void Interpreter::execute_stmt(Node *stmt)
                 LOG_DEBUG("Interpreter: Saindo do WHILE");
                 break;
             }
+            push_scope();
             for (const auto &stmt_ptr : while_stmt->getBody())
             {
                 execute_stmt(stmt_ptr.get());
                 if (return_flag)
                 {
                     LOG_DEBUG("Interpreter: Retorno detectado no WHILE");
+                    pop_scope();
                     return;
                 }
                 if (break_flag)
                 {
                     LOG_DEBUG("Interpreter: Break detectado no WHILE");
                     break_flag = false;
-                    return;
+                    pop_scope();
+                    break;
                 }
                 if (continue_flag)
                 {
@@ -1017,6 +1106,9 @@ void Interpreter::execute_stmt(Node *stmt)
                     break;
                 }
             }
+            pop_scope();
+            if (break_flag)
+                break;
         }
     }
     else if (auto *brk = dynamic_cast<Break *>(stmt))
@@ -1031,7 +1123,6 @@ void Interpreter::execute_stmt(Node *stmt)
     }
     else if (auto *par = dynamic_cast<Par *>(stmt))
     {
-        // Execução paralela: cada statement do bloco é executado em uma thread separada
         LOG_DEBUG("Interpreter: Executando PAR (execução paralela)");
         std::vector<std::thread> threads;
         for (const auto &stmt_ptr : par->getBody())
@@ -1048,21 +1139,26 @@ void Interpreter::execute_stmt(Node *stmt)
     }
     else if (auto *seq = dynamic_cast<Seq *>(stmt))
     {
-        // Execução sequencial explícita
-        LOG_DEBUG("Interpreter: Executando SEQ (sequência)");
+        LOG_DEBUG("Interpreter: Executando SEQ (sequência), is_block = " << (seq->isBlock() ? "true" : "false"));
+        if (seq->isBlock())
+        {
+            push_scope();
+            LOG_DEBUG("Interpreter: Criando novo escopo para SEQ");
+        }
         for (const auto &stmt_ptr : seq->getBody())
         {
             execute_stmt(stmt_ptr.get());
             if (return_flag || break_flag || continue_flag)
-            {
-                LOG_DEBUG("Interpreter: Interrupção detectada na SEQ");
                 break;
-            }
+        }
+        if (seq->isBlock())
+        {
+            pop_scope();
+            LOG_DEBUG("Interpreter: Desempilhando escopo do SEQ");
         }
     }
     else if (auto *cchannel = dynamic_cast<CChannel *>(stmt))
     {
-        // Criação de um canal cliente (C_CHANNEL)
         LOG_DEBUG("Interpreter: Executando C_CHANNEL");
         std::string name = cchannel->getName();
         ValueWrapper localhost = evaluate(cchannel->getLocalhostNode());
@@ -1074,13 +1170,11 @@ void Interpreter::execute_stmt(Node *stmt)
     }
     else if (auto *schannel = dynamic_cast<SChannel *>(stmt))
     {
-        // Inicializa o servidor para o canal S_CHANNEL
         LOG_DEBUG("Interpreter: Iniciando servidor S_CHANNEL");
         run_server(schannel);
     }
     else if (auto *array_decl = dynamic_cast<ArrayDecl *>(stmt))
     {
-        // Declaração de array: avalia o tamanho e cria um vetor inicializado com zeros
         std::string var_name = array_decl->getName();
         ValueWrapper size_val = evaluate(array_decl->getSizeExpr());
 
@@ -1121,15 +1215,47 @@ void Interpreter::execute(Module *module)
         throw RunTimeError("Módulo nulo fornecido para execução");
     }
     LOG_DEBUG("Interpreter: Iniciando execução do módulo");
-    for (const auto &stmt : module->getStmts())
+
+    Node *root_stmt = module->getStmt();
+    if (!root_stmt)
     {
-        execute_stmt(stmt.get());
-        if (return_flag)
+        LOG_DEBUG("Interpreter: Módulo não contém statements");
+        throw RunTimeError("Módulo vazio");
+    }
+
+    // Verifica se o nó raiz é um Seq
+    if (auto *seq = dynamic_cast<Seq *>(root_stmt))
+    {
+        LOG_DEBUG("Interpreter: Módulo contém um Seq, isBlock() = " << (seq->isBlock() ? "true" : "false"));
+        // Se isBlock() é false, usa o escopo global existente; se true, cria um novo escopo
+        if (seq->isBlock())
         {
-            LOG_DEBUG("Interpreter: Retorno detectado no módulo");
-            break;
+            push_scope();
+            LOG_DEBUG("Interpreter: Criando novo escopo para o módulo (is_block = true)");
+        }
+
+        for (const auto &stmt : seq->getBody())
+        {
+            execute_stmt(stmt.get());
+            if (return_flag)
+            {
+                LOG_DEBUG("Interpreter: Retorno detectado no módulo");
+                break;
+            }
+        }
+
+        if (seq->isBlock())
+        {
+            pop_scope();
+            LOG_DEBUG("Interpreter: Desempilhando escopo do módulo (is_block = true)");
         }
     }
+    else
+    {
+        LOG_DEBUG("Interpreter: Erro, nó raiz do módulo não é um Seq");
+        throw RunTimeError("Estrutura inválida do módulo: esperado Seq");
+    }
+
     LOG_DEBUG("Interpreter: Execução do módulo concluída");
 }
 

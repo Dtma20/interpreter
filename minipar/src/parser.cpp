@@ -91,7 +91,9 @@ std::unique_ptr<Module> Parser::start()
  */
 std::unique_ptr<Module> Parser::program()
 {
-    return std::make_unique<Module>(std::make_unique<Body>(std::move(stmts())));
+    auto body = std::make_unique<Body>(std::move(stmts()));
+    auto seq = std::make_unique<Seq>(std::move(body), false);
+    return std::make_unique<Module>(std::move(seq));
 }
 
 /**
@@ -531,7 +533,7 @@ std::unique_ptr<Node> Parser::stmtSeq()
     if (!match("RBRACE"))
         throw SyntaxError(lineno, "Esperado '}' após corpo do seq no lugar de " + lookahead.getValue());
     skipWhitespace();
-    return std::make_unique<Seq>(std::make_unique<Body>(std::move(body)));
+    return std::make_unique<Seq>(std::make_unique<Body>(std::move(body)), true);
 }
 
 // Processa execução paralela (PAR)

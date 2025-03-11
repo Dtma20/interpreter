@@ -349,29 +349,15 @@ private:
 // Subclasses de Statement
 // ======================================================================
 
-/**
- * @brief Representa o módulo, ou nó raiz, da AST.
- *
- * Contém um corpo (Body) composto por uma lista de statements.
- */
 class Module : public Statement
 {
 public:
-    /**
-     * @brief Construtor para um módulo.
-     * @param stmts Ponteiro único para o corpo do módulo.
-     */
-    Module(std::unique_ptr<Body> stmts);
-
-    /**
-     * @brief Obtém os statements do módulo.
-     * @return Referência constante para o corpo.
-     */
-    const Body &getStmts() const;
-    std::vector<Node *> getAttributes() override { return {}; }
+    Module(std::unique_ptr<Node> stmt) : stmt(std::move(stmt)) {}
+    Node *getStmt() const { return stmt.get(); }
+    std::vector<Node *> getAttributes() override { return {stmt.get()}; }
 
 private:
-    std::unique_ptr<Body> stmts; // Corpo do módulo.
+    std::unique_ptr<Node> stmt;
 };
 
 /**
@@ -600,21 +586,14 @@ private:
 class Seq : public Statement
 {
 public:
-    /**
-     * @brief Construtor para um bloco sequencial.
-     * @param body Ponteiro único para o corpo do bloco.
-     */
-    Seq(std::unique_ptr<Body> body);
-
-    /**
-     * @brief Obtém o corpo do bloco sequencial.
-     * @return Referência constante para o corpo.
-     */
-    const Body &getBody() const;
+    Seq(std::unique_ptr<Body> body, bool is_block = false) : body(std::move(body)), is_block(is_block) {}
+    const Body &getBody() const { return *body; }
+    bool isBlock() const { return is_block; } // Agora inline
     std::vector<Node *> getAttributes() override { return {}; }
 
 private:
-    std::unique_ptr<Body> body; // Corpo do bloco sequencial.
+    std::unique_ptr<Body> body;
+    bool is_block;
 };
 
 /**
