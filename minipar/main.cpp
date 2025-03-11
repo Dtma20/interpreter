@@ -18,7 +18,6 @@ int main(int argc, char* argv[]) {
         source_code.assign((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
         file.close();
     } else {
-        std::cout << "Digite o código fonte (termine com Ctrl+D ou Ctrl+Z):\n";
         source_code.assign((std::istreambuf_iterator<char>(std::cin)), std::istreambuf_iterator<char>());
     }
 
