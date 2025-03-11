@@ -3,11 +3,20 @@
 #include <algorithm>
 #include <iostream>
 
+// Função auxiliar para normalizar tipos
+static std::string normalize_type(const std::string &type)
+{
+    if (type == "STRING")
+        return "string";
+    if (type == "NUM")
+        return "num";
+    if (type == "BOOL")
+        return "bool";
+    return type;
+}
+
 /**
  * @brief Construtor do SemanticAnalyzer.
- *
- * Inicializa o analisador semântico e define a lista de funções padrão suportadas,
- * como "print", "input", "sleep", "to_num", "to_string", "to_bool", "send", "close", "len", "isalpha" e "isnum".
  */
 SemanticAnalyzer::SemanticAnalyzer()
 {
@@ -18,14 +27,7 @@ SemanticAnalyzer::SemanticAnalyzer()
 }
 
 /**
- * @brief Avalia um nó da AST e retorna o tipo resultante.
- *
- * Este método determina o tipo de um nó da árvore sintática abstrata chamando
- * a função de visita correspondente para cada tipo de nó (Constant, ID, Access, Logical,
- * Relational, Arithmetic, Unary ou Call).
- *
- * @param node Ponteiro para o nó da AST.
- * @return String representando o tipo da expressão ou uma string vazia se o nó for nulo.
+ * @brief Avalia um nó da AST e retorna o tipo resultante normalizado.
  */
 std::string SemanticAnalyzer::evaluate(Node *node) const
 {
@@ -35,65 +37,51 @@ std::string SemanticAnalyzer::evaluate(Node *node) const
         std::cout << "[DEBUG] SemanticAnalyzer: Nó nulo, retornando string vazia" << std::endl;
         return "";
     }
+    std::string raw_type;
     if (auto *constant = dynamic_cast<Constant *>(node))
     {
-        std::string type = visit_Constant(constant).value_or("");
-        std::cout << "[DEBUG] SemanticAnalyzer: Tipo da constante: " << type << std::endl;
-        return type;
+        raw_type = visit_Constant(constant).value_or("");
     }
     else if (auto *id = dynamic_cast<ID *>(node))
     {
-        std::string type = visit_ID(id).value_or("");
-        std::cout << "[DEBUG] SemanticAnalyzer: Tipo do identificador: " << type << std::endl;
-        return type;
+        raw_type = visit_ID(id).value_or("");
     }
     else if (auto *access = dynamic_cast<Access *>(node))
     {
-        std::string type = visit_Access(access).value_or("");
-        std::cout << "[DEBUG] SemanticAnalyzer: Tipo do acesso: " << type << std::endl;
-        return type;
+        raw_type = visit_Access(access).value_or("");
     }
     else if (auto *logical = dynamic_cast<Logical *>(node))
     {
-        std::string type = visit_Logical(logical).value_or("");
-        std::cout << "[DEBUG] SemanticAnalyzer: Tipo da operação lógica: " << type << std::endl;
-        return type;
+        raw_type = visit_Logical(logical).value_or("");
     }
     else if (auto *relational = dynamic_cast<Relational *>(node))
     {
-        std::string type = visit_Relational(relational).value_or("");
-        std::cout << "[DEBUG] SemanticAnalyzer: Tipo da operação relacional: " << type << std::endl;
-        return type;
+        raw_type = visit_Relational(relational).value_or("");
     }
     else if (auto *arithmetic = dynamic_cast<Arithmetic *>(node))
     {
-        std::string type = visit_Arithmetic(arithmetic).value_or("");
-        std::cout << "[DEBUG] SemanticAnalyzer: Tipo da operação aritmética: " << type << std::endl;
-        return type;
+        raw_type = visit_Arithmetic(arithmetic).value_or("");
     }
     else if (auto *unary = dynamic_cast<Unary *>(node))
     {
-        std::string type = visit_Unary(unary).value_or("");
-        std::cout << "[DEBUG] SemanticAnalyzer: Tipo da operação unária: " << type << std::endl;
-        return type;
+        raw_type = visit_Unary(unary).value_or("");
     }
     else if (auto *call = dynamic_cast<Call *>(node))
     {
-        std::string type = visit_Call(call).value_or("");
-        std::cout << "[DEBUG] SemanticAnalyzer: Tipo da chamada de função: " << type << std::endl;
-        return type;
+        raw_type = visit_Call(call).value_or("");
     }
-    std::cout << "[DEBUG] SemanticAnalyzer: Tipo não identificado para o nó" << std::endl;
-    return "";
+    else
+    {
+        std::cout << "[DEBUG] SemanticAnalyzer: Tipo não identificado para o nó" << std::endl;
+        return "";
+    }
+    std::string normalized_type = normalize_type(raw_type);
+    std::cout << "[DEBUG] SemanticAnalyzer: Tipo normalizado: " << normalized_type << std::endl;
+    return normalized_type;
 }
 
 /**
  * @brief Visita um nó da AST para realizar a análise semântica.
- *
- * Identifica o tipo de nó e invoca o método de visita correspondente. Se o nó não
- * for de um tipo específico de statement, simplesmente avalia seu tipo.
- *
- * @param node Ponteiro para o nó da AST.
  */
 void SemanticAnalyzer::visit(Node *node)
 {
@@ -103,48 +91,48 @@ void SemanticAnalyzer::visit(Node *node)
         std::cout << "[DEBUG] SemanticAnalyzer: Nó nulo, retornando" << std::endl;
         return;
     }
-    if (auto *module = dynamic_cast<Module*>(node))
+    if (auto *module = dynamic_cast<Module *>(node))
     {
         std::cout << "[DEBUG] SemanticAnalyzer: Detectado Module, chamando generic_visit" << std::endl;
         generic_visit(module);
     }
-    else if (auto *assign = dynamic_cast<Assign*>(node))
+    else if (auto *assign = dynamic_cast<Assign *>(node))
     {
         visit_Assign(assign);
     }
-    else if (auto *ret = dynamic_cast<Return*>(node))
+    else if (auto *ret = dynamic_cast<Return *>(node))
     {
         visit_Return(ret);
     }
-    else if (auto *brk = dynamic_cast<Break*>(node))
+    else if (auto *brk = dynamic_cast<Break *>(node))
     {
         visit_Break(brk);
     }
-    else if (auto *cont = dynamic_cast<Continue*>(node))
+    else if (auto *cont = dynamic_cast<Continue *>(node))
     {
         visit_Continue(cont);
     }
-    else if (auto *func = dynamic_cast<FuncDef*>(node))
+    else if (auto *func = dynamic_cast<FuncDef *>(node))
     {
         visit_FuncDef(func);
     }
-    else if (auto *ifStmt = dynamic_cast<If*>(node))
+    else if (auto *ifStmt = dynamic_cast<If *>(node))
     {
         visit_If(ifStmt);
     }
-    else if (auto *whileStmt = dynamic_cast<While*>(node))
+    else if (auto *whileStmt = dynamic_cast<While *>(node))
     {
         visit_While(whileStmt);
     }
-    else if (auto *par = dynamic_cast<Par*>(node))
+    else if (auto *par = dynamic_cast<Par *>(node))
     {
         visit_Par(par);
     }
-    else if (auto *cchannel = dynamic_cast<CChannel*>(node))
+    else if (auto *cchannel = dynamic_cast<CChannel *>(node))
     {
         visit_CChannel(cchannel);
     }
-    else if (auto *schannel = dynamic_cast<SChannel*>(node))
+    else if (auto *schannel = dynamic_cast<SChannel *>(node))
     {
         visit_SChannel(schannel);
     }
@@ -157,11 +145,6 @@ void SemanticAnalyzer::visit(Node *node)
 
 /**
  * @brief Visita um nó genericamente, atualizando o contexto.
- *
- * Empilha o nó atual no contexto, visita os statements contidos (por exemplo, num módulo)
- * e, ao final, remove o nó do contexto.
- *
- * @param node Ponteiro para o nó a ser visitado.
  */
 void SemanticAnalyzer::generic_visit(Node *node)
 {
@@ -188,13 +171,7 @@ void SemanticAnalyzer::generic_visit(Node *node)
 }
 
 /**
- * @brief Valida uma atribuição, verificando se o tipo da variável (lado esquerdo)
- * é compatível com o tipo do valor atribuído (lado direito).
- *
- * Também verifica se a atribuição é feita para uma variável (ID).
- *
- * @param node Ponteiro para o nó de atribuição.
- * @throws SemanticError se a atribuição não for válida.
+ * @brief Valida uma atribuição, verificando compatibilidade de tipos.
  */
 void SemanticAnalyzer::visit_Assign(Assign *node)
 {
@@ -204,28 +181,41 @@ void SemanticAnalyzer::visit_Assign(Assign *node)
     std::string right_type = evaluate(node->getRight());
     std::cout << "[DEBUG] SemanticAnalyzer: Tipo do lado direito: " << right_type << std::endl;
 
-    if (!dynamic_cast<ID *>(node->getLeft()))
+    // Verifica se o lado esquerdo é um lvalue válido (ID ou Access)
+    std::string var_name;
+    if (auto *id = dynamic_cast<ID *>(node->getLeft()))
     {
-        std::cout << "[DEBUG] SemanticAnalyzer: Erro - atribuição não é para uma variável" << std::endl;
-        throw SemanticError("atribuição precisa ser feita para uma variável");
+        var_name = id->getToken().getValue();
     }
-    ID *var = dynamic_cast<ID *>(node->getLeft());
-    if (left_type != right_type)
+    else if (auto *access = dynamic_cast<Access *>(node->getLeft()))
+    {
+        var_name = "elemento de array"; // Simplificação para mensagem de erro
+    }
+    else
+    {
+        std::cout << "[DEBUG] SemanticAnalyzer: Erro - atribuição não é para uma variável ou acesso" << std::endl;
+        throw SemanticError("atribuição precisa ser feita para uma variável ou elemento de array");
+    }
+
+    // Verificação de compatibilidade de tipos
+    if (left_type == right_type)
+    {
+        std::cout << "[DEBUG] SemanticAnalyzer: Atribuição válida" << std::endl;
+    }
+    else if (left_type == "num" && right_type == "string")
+    {
+        // Exemplo de conversão implícita (ajustar conforme regras da linguagem)
+        std::cout << "[DEBUG] SemanticAnalyzer: Conversão implícita de string para num permitida" << std::endl;
+    }
+    else
     {
         std::cout << "[DEBUG] SemanticAnalyzer: Erro de tipo - esperado " << left_type << ", encontrado " << right_type << std::endl;
-        throw SemanticError("(Erro de Tipo) variável " + var->getToken().getValue() + " espera " + left_type);
+        throw SemanticError("(Erro de Tipo) " + var_name + " espera " + left_type + ", mas recebeu " + right_type);
     }
-    std::cout << "[DEBUG] SemanticAnalyzer: Atribuição válida" << std::endl;
 }
 
 /**
  * @brief Valida um comando de retorno (return).
- *
- * Verifica se o 'return' ocorre dentro de uma função e se o tipo do valor retornado
- * coincide com o tipo de retorno declarado da função.
- *
- * @param node Ponteiro para o nó Return.
- * @throws SemanticError se o 'return' ocorrer fora de uma função ou com tipo incompatível.
  */
 void SemanticAnalyzer::visit_Return(Return *node)
 {
@@ -267,11 +257,6 @@ void SemanticAnalyzer::visit_Return(Return *node)
 
 /**
  * @brief Valida um comando break.
- *
- * Garante que o 'break' seja utilizado apenas dentro de loops (como while).
- *
- * @param node Ponteiro para o nó Break.
- * @throws SemanticError se o 'break' ocorrer fora de um loop.
  */
 void SemanticAnalyzer::visit_Break(Break *node)
 {
@@ -296,11 +281,6 @@ void SemanticAnalyzer::visit_Break(Break *node)
 
 /**
  * @brief Valida um comando continue.
- *
- * Garante que o 'continue' seja utilizado apenas dentro de loops.
- *
- * @param node Ponteiro para o nó Continue.
- * @throws SemanticError se o 'continue' ocorrer fora de um loop.
  */
 void SemanticAnalyzer::visit_Continue(Continue *node)
 {
@@ -325,12 +305,6 @@ void SemanticAnalyzer::visit_Continue(Continue *node)
 
 /**
  * @brief Valida a declaração de uma função.
- *
- * Verifica se a função está sendo declarada em um escopo global (não dentro de if, while ou blocos paralelos)
- * e registra a função na tabela de funções.
- *
- * @param node Ponteiro para o nó FuncDef.
- * @throws SemanticError se a função for declarada em um escopo local inválido.
  */
 void SemanticAnalyzer::visit_FuncDef(FuncDef *node)
 {
@@ -354,21 +328,16 @@ void SemanticAnalyzer::visit_FuncDef(FuncDef *node)
 
 /**
  * @brief Valida uma estrutura condicional if.
- *
- * Verifica se a condição do if é do tipo BOOL e visita os blocos do if e do else (se presente).
- *
- * @param node Ponteiro para o nó If.
- * @throws SemanticError se a condição não for do tipo BOOL.
  */
 void SemanticAnalyzer::visit_If(If *node)
 {
     std::cout << "[DEBUG] SemanticAnalyzer: Iniciando visit_If" << std::endl;
     std::string cond_type = evaluate(node->getCondition());
     std::cout << "[DEBUG] SemanticAnalyzer: Tipo da condição: " << cond_type << std::endl;
-    if (cond_type != "BOOL")
+    if (cond_type != "bool")
     {
-        std::cout << "[DEBUG] SemanticAnalyzer: Erro - condição do if não é BOOL" << std::endl;
-        throw SemanticError("esperado BOOL, mas encontrado " + cond_type);
+        std::cout << "[DEBUG] SemanticAnalyzer: Erro - condição do if não é bool" << std::endl;
+        throw SemanticError("esperado bool, mas encontrado " + cond_type);
     }
     context_stack.push_back(node);
     std::cout << "[DEBUG] SemanticAnalyzer: Visitando bloco do if" << std::endl;
@@ -384,21 +353,16 @@ void SemanticAnalyzer::visit_If(If *node)
 
 /**
  * @brief Valida uma estrutura de repetição while.
- *
- * Verifica se a condição do while é do tipo BOOL e visita o bloco de instruções do loop.
- *
- * @param node Ponteiro para o nó While.
- * @throws SemanticError se a condição não for do tipo BOOL.
  */
 void SemanticAnalyzer::visit_While(While *node)
 {
     std::cout << "[DEBUG] SemanticAnalyzer: Iniciando visit_While" << std::endl;
     std::string cond_type = evaluate(node->getCondition());
     std::cout << "[DEBUG] SemanticAnalyzer: Tipo da condição: " << cond_type << std::endl;
-    if (cond_type != "BOOL")
+    if (cond_type != "bool")
     {
-        std::cout << "[DEBUG] SemanticAnalyzer: Erro - condição do while não é BOOL" << std::endl;
-        throw SemanticError("esperado BOOL, mas encontrado " + cond_type);
+        std::cout << "[DEBUG] SemanticAnalyzer: Erro - condição do while não é bool" << std::endl;
+        throw SemanticError("esperado bool, mas encontrado " + cond_type);
     }
     context_stack.push_back(node);
     std::cout << "[DEBUG] SemanticAnalyzer: Visitando bloco do while" << std::endl;
@@ -409,11 +373,6 @@ void SemanticAnalyzer::visit_While(While *node)
 
 /**
  * @brief Valida um bloco de execução paralela.
- *
- * Garante que em um bloco de execução paralela (Par) apenas chamadas de função sejam executadas.
- *
- * @param node Ponteiro para o nó Par.
- * @throws SemanticError se algum dos statements não for uma chamada de função.
  */
 void SemanticAnalyzer::visit_Par(Par *node)
 {
@@ -432,21 +391,16 @@ void SemanticAnalyzer::visit_Par(Par *node)
 
 /**
  * @brief Valida um canal de cliente (CChannel).
- *
- * Verifica se os atributos 'localhost' e 'port' possuem os tipos STRING e num, respectivamente.
- *
- * @param node Ponteiro para o nó CChannel.
- * @throws SemanticError se os tipos não forem os esperados.
  */
 void SemanticAnalyzer::visit_CChannel(CChannel *node)
 {
     std::cout << "[DEBUG] SemanticAnalyzer: Iniciando visit_CChannel para " << node->getName() << std::endl;
     std::string localhost_type = evaluate(node->getLocalhostNode());
     std::cout << "[DEBUG] SemanticAnalyzer: Tipo de localhost: " << localhost_type << std::endl;
-    if (localhost_type != "STRING")
+    if (localhost_type != "string")
     {
-        std::cout << "[DEBUG] SemanticAnalyzer: Erro - localhost não é STRING" << std::endl;
-        throw SemanticError("localhost em " + node->getName() + " precisa ser STRING");
+        std::cout << "[DEBUG] SemanticAnalyzer: Erro - localhost não é string" << std::endl;
+        throw SemanticError("localhost em " + node->getName() + " precisa ser string");
     }
     std::string port_type = evaluate(node->getPortNode());
     std::cout << "[DEBUG] SemanticAnalyzer: Tipo de port: " << port_type << std::endl;
@@ -460,13 +414,6 @@ void SemanticAnalyzer::visit_CChannel(CChannel *node)
 
 /**
  * @brief Valida um canal de serviço (SChannel).
- *
- * Verifica se a função associada ao canal está declarada, se possui retorno STRING,
- * se os parâmetros estão corretos e se os atributos 'description', 'localhost' e 'port'
- * possuem os tipos esperados.
- *
- * @param node Ponteiro para o nó SChannel.
- * @throws SemanticError se alguma validação falhar.
  */
 void SemanticAnalyzer::visit_SChannel(SChannel *node)
 {
@@ -479,10 +426,10 @@ void SemanticAnalyzer::visit_SChannel(SChannel *node)
     }
     FuncDef *func = it->second;
     std::cout << "[DEBUG] SemanticAnalyzer: Função associada: " << func->getName() << std::endl;
-    if (func->getReturnType() != "STRING")
+    if (func->getReturnType() != "string")
     {
-        std::cout << "[DEBUG] SemanticAnalyzer: Erro - retorno da função não é STRING" << std::endl;
-        throw SemanticError("função base de " + node->getName() + " precisa ter retorno STRING");
+        std::cout << "[DEBUG] SemanticAnalyzer: Erro - retorno da função não é string" << std::endl;
+        throw SemanticError("função base de " + node->getName() + " precisa ter retorno string");
     }
     int required_params = 0;
     for (const auto &param : func->getParams())
@@ -492,7 +439,7 @@ void SemanticAnalyzer::visit_SChannel(SChannel *node)
             required_params++;
         }
     }
-    int call_args = 0; // Note: aqui pode haver um bug no código original, pois call_args não está sendo calculado
+    int call_args = 0; // Corrigir para contar argumentos reais se aplicável
     std::cout << "[DEBUG] SemanticAnalyzer: Parâmetros requeridos: " << required_params << ", argumentos fornecidos: " << call_args << std::endl;
     if (required_params > call_args)
     {
@@ -502,17 +449,17 @@ void SemanticAnalyzer::visit_SChannel(SChannel *node)
     }
     std::string description_type = evaluate(node->getDescription());
     std::cout << "[DEBUG] SemanticAnalyzer: Tipo de description: " << description_type << std::endl;
-    if (description_type != "STRING")
+    if (description_type != "string")
     {
-        std::cout << "[DEBUG] SemanticAnalyzer: Erro - description não é STRING" << std::endl;
-        throw SemanticError("description em " + node->getName() + " precisa ser STRING");
+        std::cout << "[DEBUG] SemanticAnalyzer: Erro - description não é string" << std::endl;
+        throw SemanticError("description em " + node->getName() + " precisa ser string");
     }
     std::string localhost_type = evaluate(node->getLocalhostNode());
     std::cout << "[DEBUG] SemanticAnalyzer: Tipo de localhost: " << localhost_type << std::endl;
-    if (localhost_type != "STRING")
+    if (localhost_type != "string")
     {
-        std::cout << "[DEBUG] SemanticAnalyzer: Erro - localhost não é STRING" << std::endl;
-        throw SemanticError("localhost em " + node->getName() + " precisa ser STRING");
+        std::cout << "[DEBUG] SemanticAnalyzer: Erro - localhost não é string" << std::endl;
+        throw SemanticError("localhost em " + node->getName() + " precisa ser string");
     }
     std::string port_type = evaluate(node->getPortNode());
     std::cout << "[DEBUG] SemanticAnalyzer: Tipo de port: " << port_type << std::endl;
@@ -526,9 +473,6 @@ void SemanticAnalyzer::visit_SChannel(SChannel *node)
 
 /**
  * @brief Avalia uma constante e retorna seu tipo.
- *
- * @param node Ponteiro para o nó Constant.
- * @return Tipo da constante encapsulado em std::optional.
  */
 std::optional<std::string> SemanticAnalyzer::visit_Constant(const Constant *node) const
 {
@@ -540,9 +484,6 @@ std::optional<std::string> SemanticAnalyzer::visit_Constant(const Constant *node
 
 /**
  * @brief Avalia um identificador e retorna seu tipo.
- *
- * @param node Ponteiro para o nó ID.
- * @return Tipo do identificador encapsulado em std::optional.
  */
 std::optional<std::string> SemanticAnalyzer::visit_ID(const ID *node) const
 {
@@ -554,12 +495,6 @@ std::optional<std::string> SemanticAnalyzer::visit_ID(const ID *node) const
 
 /**
  * @brief Avalia um acesso a elemento e retorna seu tipo.
- *
- * Verifica se o acesso por índice é realizado em uma string.
- *
- * @param node Ponteiro para o nó Access.
- * @return Tipo do acesso encapsulado em std::optional.
- * @throws SemanticError se o acesso não for feito em uma string.
  */
 std::optional<std::string> SemanticAnalyzer::visit_Access(const Access *node) const
 {
@@ -569,18 +504,12 @@ std::optional<std::string> SemanticAnalyzer::visit_Access(const Access *node) co
         std::cout << "[DEBUG] SemanticAnalyzer: Erro - acesso por índice não é em uma string" << std::endl;
         throw SemanticError("Acesso por index é válido apenas em strings");
     }
-    std::cout << "[DEBUG] SemanticAnalyzer: Tipo do acesso: STRING" << std::endl;
-    return node->getType();
+    std::cout << "[DEBUG] SemanticAnalyzer: Tipo do acesso: string" << std::endl;
+    return "string"; // Normalizado para "string" em vez de "STRING"
 }
 
 /**
- * @brief Avalia uma operação lógica e retorna "BOOL".
- *
- * Verifica se ambos os operandos são do tipo BOOL.
- *
- * @param node Ponteiro para o nó Logical.
- * @return "BOOL" encapsulado em std::optional se a operação for válida.
- * @throws SemanticError se algum operando não for BOOL.
+ * @brief Avalia uma operação lógica e retorna "bool".
  */
 std::optional<std::string> SemanticAnalyzer::visit_Logical(const Logical *node) const
 {
@@ -588,26 +517,18 @@ std::optional<std::string> SemanticAnalyzer::visit_Logical(const Logical *node) 
     std::string left_type = evaluate(node->getLeft());
     std::string right_type = evaluate(node->getRight());
     std::cout << "[DEBUG] SemanticAnalyzer: Tipos dos operandos: " << left_type << " e " << right_type << std::endl;
-    if (left_type != "BOOL" || right_type != "BOOL")
+    if (left_type != "bool" || right_type != "bool")
     {
-        std::cout << "[DEBUG] SemanticAnalyzer: Erro - operandos não são BOOL" << std::endl;
-        throw SemanticError("(Erro de Tipo) Esperado BOOL, mas encontrado " + left_type +
+        std::cout << "[DEBUG] SemanticAnalyzer: Erro - operandos não são bool" << std::endl;
+        throw SemanticError("(Erro de Tipo) Esperado bool, mas encontrado " + left_type +
                             " e " + right_type + " na operação " + node->getToken().getValue());
     }
-    std::cout << "[DEBUG] SemanticAnalyzer: Operação lógica válida, retornando BOOL" << std::endl;
-    return "BOOL";
+    std::cout << "[DEBUG] SemanticAnalyzer: Operação lógica válida, retornando bool" << std::endl;
+    return "bool";
 }
 
 /**
- * @brief Avalia uma operação relacional e retorna "BOOL".
- *
- * Verifica se os operandos são compatíveis para comparação:
- * - Para "==" e "!=", os operandos devem ser do mesmo tipo.
- * - Para outros operadores, os operandos devem ser num.
- *
- * @param node Ponteiro para o nó Relational.
- * @return "BOOL" encapsulado em std::optional se os operandos forem compatíveis.
- * @throws SemanticError se os operandos forem incompatíveis.
+ * @brief Avalia uma operação relacional e retorna "bool".
  */
 std::optional<std::string> SemanticAnalyzer::visit_Relational(const Relational *node) const
 {
@@ -633,19 +554,12 @@ std::optional<std::string> SemanticAnalyzer::visit_Relational(const Relational *
                                 left_type + " e " + right_type + " na operação " + node->getToken().getValue());
         }
     }
-    std::cout << "[DEBUG] SemanticAnalyzer: Operação relacional válida, retornando BOOL" << std::endl;
-    return "BOOL";
+    std::cout << "[DEBUG] SemanticAnalyzer: Operação relacional válida, retornando bool" << std::endl;
+    return "bool";
 }
 
 /**
  * @brief Avalia uma operação aritmética e retorna o tipo do operando.
- *
- * Para o operador de soma, permite apenas operandos do mesmo tipo (permitindo concatenar strings ou somar números).
- * Para outros operadores, os operandos devem ser num.
- *
- * @param node Ponteiro para o nó Arithmetic.
- * @return Tipo dos operandos encapsulado em std::optional.
- * @throws SemanticError se os operandos forem incompatíveis.
  */
 std::optional<std::string> SemanticAnalyzer::visit_Arithmetic(const Arithmetic *node) const
 {
@@ -677,12 +591,6 @@ std::optional<std::string> SemanticAnalyzer::visit_Arithmetic(const Arithmetic *
 
 /**
  * @brief Avalia uma operação unária e retorna o tipo do operando.
- *
- * Verifica se o operador unário '-' é aplicado a um num e se o '!' é aplicado a um BOOL.
- *
- * @param node Ponteiro para o nó Unary.
- * @return Tipo do operando encapsulado em std::optional.
- * @throws SemanticError se o tipo do operando não for compatível com o operador.
  */
 std::optional<std::string> SemanticAnalyzer::visit_Unary(const Unary *node) const
 {
@@ -700,10 +608,10 @@ std::optional<std::string> SemanticAnalyzer::visit_Unary(const Unary *node) cons
     }
     else if (node->getToken().getTag() == "!")
     {
-        if (expr_type != "BOOL")
+        if (expr_type != "bool")
         {
-            std::cout << "[DEBUG] SemanticAnalyzer: Erro - operando não é BOOL" << std::endl;
-            throw SemanticError("(Erro de Tipo) Esperado BOOL, mas encontrado " +
+            std::cout << "[DEBUG] SemanticAnalyzer: Erro - operando não é bool" << std::endl;
+            throw SemanticError("(Erro de Tipo) Esperado bool, mas encontrado " +
                                 expr_type + " na operação " + node->getToken().getValue());
         }
     }
@@ -712,9 +620,7 @@ std::optional<std::string> SemanticAnalyzer::visit_Unary(const Unary *node) cons
 }
 
 /**
- * @brief Visita um bloco de código (Body) e executa a análise semântica em cada statement.
- *
- * @param block Body contendo os statements a serem analisados.
+ * @brief Visita um bloco de código (Body).
  */
 void SemanticAnalyzer::visit_block(const Body &block)
 {
@@ -728,15 +634,7 @@ void SemanticAnalyzer::visit_block(const Body &block)
 }
 
 /**
- * @brief Avalia uma chamada de função e retorna o tipo de retorno da função.
- *
- * Valida os argumentos passados e, caso a função não esteja na tabela de funções,
- * verifica se ela faz parte das funções padrão. Se estiver, retorna o tipo padrão; caso contrário,
- * lança um erro semântico.
- *
- * @param node Ponteiro para o nó Call.
- * @return Tipo de retorno da função encapsulado em std::optional.
- * @throws SemanticError se a função não estiver declarada ou se os argumentos forem insuficientes.
+ * @brief Avalia uma chamada de função e retorna o tipo de retorno.
  */
 std::optional<std::string> SemanticAnalyzer::visit_Call(const Call *node) const
 {
@@ -787,12 +685,6 @@ std::optional<std::string> SemanticAnalyzer::visit_Call(const Call *node) const
 
 /**
  * @brief Avalia um array e retorna seu tipo.
- *
- * Verifica se todos os elementos do array são do mesmo tipo.
- *
- * @param node Ponteiro para o nó Array.
- * @return "ARRAY" encapsulado em std::optional se todos os elementos tiverem o mesmo tipo.
- * @throws SemanticError se os elementos do array forem de tipos diferentes.
  */
 std::optional<std::string> SemanticAnalyzer::visit_Array(const Array *node) const
 {

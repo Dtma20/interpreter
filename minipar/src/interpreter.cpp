@@ -17,6 +17,27 @@
 #include <cmath>
 #include "../include/debug.hpp"
 
+
+std::string unescape_string(const std::string& input) {
+    std::string result;
+    for (size_t i = 0; i < input.length(); ++i) {
+        if (input[i] == '\\' && i + 1 < input.length()) {
+            ++i;
+            switch (input[i]) {
+                case 'n': result += '\n'; break;
+                case 't': result += '\t'; break;
+                case 'r': result += '\r'; break;
+                case '\\': result += '\\'; break;
+                case '"': result += '"'; break;
+                default: result += input[i]; break;
+            }
+        } else {
+            result += input[i];
+        }
+    }
+    return result;
+}
+
 /**
  * @brief Construtor do interpretador.
  *
@@ -177,6 +198,7 @@ ValueWrapper Interpreter::evaluateConstant(Constant *constant)
     std::string valueStr = constant->getToken().getValue();
     std::string typeStr = constant->getType();
     LOG_DEBUG("Interpreter: Constante detectada, tipo: " << typeStr << ", valor: " << valueStr);
+
     if (typeStr == "NUM")
     {
         double num = std::stod(valueStr);
@@ -185,8 +207,9 @@ ValueWrapper Interpreter::evaluateConstant(Constant *constant)
     }
     else if (typeStr == "STRING")
     {
-        LOG_DEBUG("Interpreter: Retornando STRING: " << valueStr);
-        return ValueWrapper(valueStr);
+        std::string unescapedValue = unescape_string(valueStr);
+        LOG_DEBUG("Interpreter: Retornando STRING: " << unescapedValue);
+        return ValueWrapper(unescapedValue);
     }
     else if (typeStr == "BOOL")
     {
@@ -198,7 +221,6 @@ ValueWrapper Interpreter::evaluateConstant(Constant *constant)
     LOG_DEBUG("Interpreter: Erro, tipo de constante não suportado: " << typeStr);
     throw RunTimeError("Tipo de constante não suportado: " + typeStr);
 }
-
 ValueWrapper Interpreter::evaluateArray(Array *array)
 {
     std::vector<ValueWrapper> elements;
