@@ -23,6 +23,7 @@ struct Symbol
      */
     Symbol(const std::string &var, const std::string &type)
         : var(var), type(type) {}
+
 };
 
 /**

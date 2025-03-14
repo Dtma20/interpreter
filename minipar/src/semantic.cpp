@@ -20,6 +20,7 @@ static std::string normalize_type(const std::string &type)
  */
 SemanticAnalyzer::SemanticAnalyzer()
 {
+    scope_stack.push_back(std::unordered_map<std::string, std::string>());
     LOG_DEBUG("SemanticAnalyzer: Construtor chamado, inicializando default_func_names");
     default_func_names = {"print", "input", "sleep", "to_num", "to_string",
                           "to_bool", "send", "close", "len", "isalpha", "isnum"};
@@ -173,40 +174,44 @@ void SemanticAnalyzer::generic_visit(Node *node)
 /**
  * @brief Valida uma atribuição, verificando compatibilidade de tipos.
  */
-void SemanticAnalyzer::visit_Assign(Assign *node)
-{
+void SemanticAnalyzer::visit_Assign(Assign *node) {
     LOG_DEBUG("SemanticAnalyzer: Iniciando visit_Assign");
-    std::string left_type = evaluate(node->getLeft());
-    LOG_DEBUG("SemanticAnalyzer: Tipo do lado esquerdo: " << left_type);
-    std::string right_type = evaluate(node->getRight());
-    LOG_DEBUG("SemanticAnalyzer: Tipo do lado direito: " << right_type);
-
     std::string var_name;
-    if (auto *id = dynamic_cast<ID *>(node->getLeft()))
-    {
+    std::string left_type;
+    if (auto *id = dynamic_cast<ID *>(node->getLeft())) {
         var_name = id->getToken().getValue();
-    }
-    else if (auto *access = dynamic_cast<Access *>(node->getLeft()))
-    {
+        left_type = id->getType(); // Tipo da variável, se disponível
+        if (!left_type.empty()) { // Nova declaração
+            if (scope_stack.back().find(var_name) != scope_stack.back().end()) {
+                throw SemanticError("Variável " + var_name + " já declarada neste escopo");
+            }
+            scope_stack.back()[var_name] = left_type; // Adiciona ao escopo atual
+        }
+    } else if (auto *access = dynamic_cast<Access *>(node->getLeft())) {
         var_name = "elemento de array";
-    }
-    else
-    {
-        LOG_DEBUG("SemanticAnalyzer: Erro - atribuição não é para uma variável ou acesso");
+        left_type = evaluate(node->getLeft());
+    } else {
         throw SemanticError("atribuição precisa ser feita para uma variável ou elemento de array");
     }
 
-    if (left_type == right_type)
-    {
+    std::string right_type = evaluate(node->getRight());
+    if (left_type.empty()) { // Atualização de variável existente
+        for (auto it = scope_stack.rbegin(); it != scope_stack.rend(); ++it) {
+            if (it->find(var_name) != it->end()) {
+                left_type = (*it)[var_name];
+                break;
+            }
+        }
+        if (left_type.empty()) {
+            throw SemanticError("Variável " + var_name + " não declarada");
+        }
+    }
+
+    if (left_type == right_type) {
         LOG_DEBUG("SemanticAnalyzer: Atribuição válida");
-    }
-    else if (left_type == "num" && right_type == "string")
-    {
+    } else if (left_type == "num" && right_type == "string") {
         LOG_DEBUG("SemanticAnalyzer: Conversão implícita de string para num permitida");
-    }
-    else
-    {
-        LOG_DEBUG("SemanticAnalyzer: Erro de tipo - esperado " << left_type << ", encontrado " << right_type);
+    } else {
         throw SemanticError("(Erro de Tipo) " + var_name + " espera " + left_type + ", mas recebeu " + right_type);
     }
 }
@@ -303,46 +308,43 @@ void SemanticAnalyzer::visit_Continue(Continue *node)
 /**
  * @brief Valida a declaração de uma função.
  */
-void SemanticAnalyzer::visit_FuncDef(FuncDef *node)
-{
+void SemanticAnalyzer::visit_FuncDef(FuncDef *node) {
     LOG_DEBUG("SemanticAnalyzer: Iniciando visit_FuncDef para função " << node->getName());
-    for (auto *ctx : context_stack)
-    {
-        if (dynamic_cast<If *>(ctx) || dynamic_cast<While *>(ctx) || dynamic_cast<Par *>(ctx))
-        {
-            LOG_DEBUG("SemanticAnalyzer: Erro - função declarada em escopo local inválido");
+    for (auto *ctx : context_stack) {
+        if (dynamic_cast<If *>(ctx) || dynamic_cast<While *>(ctx) || dynamic_cast<Par *>(ctx)) {
             throw SemanticError("não é possível declarar funções dentro de escopos locais");
         }
     }
-    if (function_table.find(node->getName()) == function_table.end())
-    {
-        LOG_DEBUG("SemanticAnalyzer: Registrando função " << node->getName() << " na tabela de funções");
+    if (function_table.find(node->getName()) == function_table.end()) {
         function_table[node->getName()] = node;
     }
+    scope_stack.push_back(std::unordered_map<std::string, std::string>()); // Novo escopo
+    // Adicionar parâmetros da função ao escopo
+    for (const auto &param : node->getParams()) {
+        scope_stack.back()[param.first] = param.second.first; // Nome e tipo do parâmetro
+    }
     generic_visit(node);
+    scope_stack.pop_back(); // Sair do escopo
     LOG_DEBUG("SemanticAnalyzer: visit_FuncDef concluído para " << node->getName());
 }
 
 /**
  * @brief Valida uma estrutura condicional if.
  */
-void SemanticAnalyzer::visit_If(If *node)
-{
+void SemanticAnalyzer::visit_If(If *node) {
     LOG_DEBUG("SemanticAnalyzer: Iniciando visit_If");
     std::string cond_type = evaluate(node->getCondition());
-    LOG_DEBUG("SemanticAnalyzer: Tipo da condição: " << cond_type);
-    if (cond_type != "bool")
-    {
-        LOG_DEBUG("SemanticAnalyzer: Erro - condição do if não é bool");
+    if (cond_type != "bool") {
         throw SemanticError("esperado bool, mas encontrado " + cond_type);
     }
     context_stack.push_back(node);
-    LOG_DEBUG("SemanticAnalyzer: Visitando bloco do if");
+    scope_stack.push_back(std::unordered_map<std::string, std::string>()); // Novo escopo para if
     visit_block(node->getBody());
-    if (node->getElseStmt())
-    {
-        LOG_DEBUG("SemanticAnalyzer: Visitando bloco do else");
+    scope_stack.pop_back(); // Sair do escopo do if
+    if (node->getElseStmt()) {
+        scope_stack.push_back(std::unordered_map<std::string, std::string>()); // Novo escopo para else
         visit_block(*node->getElseStmt());
+        scope_stack.pop_back(); // Sair do escopo do else
     }
     context_stack.pop_back();
     LOG_DEBUG("SemanticAnalyzer: visit_If concluído");
@@ -351,19 +353,16 @@ void SemanticAnalyzer::visit_If(If *node)
 /**
  * @brief Valida uma estrutura de repetição while.
  */
-void SemanticAnalyzer::visit_While(While *node)
-{
+void SemanticAnalyzer::visit_While(While *node) {
     LOG_DEBUG("SemanticAnalyzer: Iniciando visit_While");
     std::string cond_type = evaluate(node->getCondition());
-    LOG_DEBUG("SemanticAnalyzer: Tipo da condição: " << cond_type);
-    if (cond_type != "bool")
-    {
-        LOG_DEBUG("SemanticAnalyzer: Erro - condição do while não é bool");
+    if (cond_type != "bool") {
         throw SemanticError("esperado bool, mas encontrado " + cond_type);
     }
     context_stack.push_back(node);
-    LOG_DEBUG("SemanticAnalyzer: Visitando bloco do while");
+    scope_stack.push_back(std::unordered_map<std::string, std::string>()); // Novo escopo
     visit_block(node->getBody());
+    scope_stack.pop_back(); 
     context_stack.pop_back();
     LOG_DEBUG("SemanticAnalyzer: visit_While concluído");
 }
@@ -428,22 +427,7 @@ void SemanticAnalyzer::visit_SChannel(SChannel *node)
         LOG_DEBUG("SemanticAnalyzer: Erro - retorno da função não é string");
         throw SemanticError("função base de " + node->getName() + " precisa ter retorno string");
     }
-    int required_params = 0;
-    for (const auto &param : func->getParams())
-    {
-        if (param.second.second == nullptr)
-        {
-            required_params++;
-        }
-    }
-    int call_args = 0; // Corrigir para contar argumentos reais se aplicável
-    LOG_DEBUG("SemanticAnalyzer: Parâmetros requeridos: " << required_params << ", argumentos fornecidos: " << call_args);
-    if (required_params > call_args)
-    {
-        LOG_DEBUG("SemanticAnalyzer: Erro - número insuficiente de argumentos");
-        throw SemanticError("Esperado " + std::to_string(required_params) + " argumentos, mas encontrado " +
-                            std::to_string(call_args));
-    }
+    // Não verificar argumentos aqui, pois s_channel apenas associa a função, não a invoca
     std::string description_type = evaluate(node->getDescription());
     LOG_DEBUG("SemanticAnalyzer: Tipo de description: " << description_type);
     if (description_type != "string")
@@ -482,12 +466,17 @@ std::optional<std::string> SemanticAnalyzer::visit_Constant(const Constant *node
 /**
  * @brief Avalia um identificador e retorna seu tipo.
  */
-std::optional<std::string> SemanticAnalyzer::visit_ID(const ID *node) const
-{
+std::optional<std::string> SemanticAnalyzer::visit_ID(const ID *node) const {
     LOG_DEBUG("SemanticAnalyzer: Iniciando visit_ID para " << node->getToken().getValue());
-    std::string type = node->getType();
-    LOG_DEBUG("SemanticAnalyzer: Tipo do identificador: " << type);
-    return type;
+    std::string var_name = node->getToken().getValue();
+    for (auto it = scope_stack.rbegin(); it != scope_stack.rend(); ++it) {
+        auto var_it = it->find(var_name);
+        if (var_it != it->end()) {
+            LOG_DEBUG("SemanticAnalyzer: Tipo do identificador: " << var_it->second);
+            return var_it->second;
+        }
+    }
+    throw SemanticError("Variável " + var_name + " não declarada");
 }
 
 /**

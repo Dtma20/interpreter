@@ -1,23 +1,23 @@
-func calc(message : string) -> string {
+func calc(msg: string) -> string {
     index : num = 0
-    size : num = len(message)
+    size : num = len(msg)
     result : num = 0
     operator : string = "+"
 
-    print(message)
+    print(msg)
     while (index < size) {
-        if (isalpha(message[index])) {
+        if (isalpha(msg[index])) {
             return "INVALIDO"
         }
-        else if (message[index] == " ") {
+        else if (msg[index] == " ") {
             index = index + 1
             continue
         }
-        else if (isnum(message[index])) {
-            valor : string = message[index]
+        else if (isnum(msg[index])) {
+            valor : string = msg[index]
             index = index + 1
-            while (index < size && isnum(message[index])) {
-                valor = valor + message[index]
+            while (index < size && isnum(msg[index])) {
+                valor = valor + msg[index]
                 index = index + 1
             }
             valor_num : num = to_number(valor)
@@ -38,11 +38,11 @@ func calc(message : string) -> string {
             }
         }
         else {
-            operator = message[index]
+            operator = msg[index]
             index = index + 1
         }
     }
-    return to_string(result) # Convertendo o resultado para string, já que a função retorna string
+    return to_string(result)
 }
 
 description : string = "CALCULADORA SIMPLES"

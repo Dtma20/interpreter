@@ -17,21 +17,38 @@
 #include <cmath>
 #include "../include/debug.hpp"
 
-
-std::string unescape_string(const std::string& input) {
+std::string unescape_string(const std::string &input)
+{
     std::string result;
-    for (size_t i = 0; i < input.length(); ++i) {
-        if (input[i] == '\\' && i + 1 < input.length()) {
+    for (size_t i = 0; i < input.length(); ++i)
+    {
+        if (input[i] == '\\' && i + 1 < input.length())
+        {
             ++i;
-            switch (input[i]) {
-                case 'n': result += '\n'; break;
-                case 't': result += '\t'; break;
-                case 'r': result += '\r'; break;
-                case '\\': result += '\\'; break;
-                case '"': result += '"'; break;
-                default: result += input[i]; break;
+            switch (input[i])
+            {
+            case 'n':
+                result += '\n';
+                break;
+            case 't':
+                result += '\t';
+                break;
+            case 'r':
+                result += '\r';
+                break;
+            case '\\':
+                result += '\\';
+                break;
+            case '"':
+                result += '"';
+                break;
+            default:
+                result += input[i];
+                break;
             }
-        } else {
+        }
+        else
+        {
             result += input[i];
         }
     }
@@ -246,13 +263,13 @@ ValueWrapper Interpreter::evaluateArray(Array *array)
 
 ValueWrapper Interpreter::evaluateAccess(Access *access)
 {
-    if (!access->getId() || !access->getExpr())
+    if (!access->getBase() || !access->getIndex())
     {
         LOG_DEBUG("Interpreter: Acesso com base ou índice nulo");
         throw RunTimeError("Acesso com base ou índice nulo");
     }
-    ValueWrapper base_val = evaluate(access->getId());
-    ValueWrapper index_val = evaluate(access->getExpr());
+    ValueWrapper base_val = evaluate(access->getBase());
+    ValueWrapper index_val = evaluate(access->getIndex());
 
     // Acesso a array por índice numérico
     if (std::holds_alternative<std::vector<ValueWrapper>>(base_val.data) &&
@@ -290,13 +307,13 @@ ValueWrapper Interpreter::evaluateAccess(Access *access)
 
 ValueWrapper Interpreter::evaluateFunctionCall(Call *call)
 {
-    if (!call->getId())
+    if (!call->getBase())
     {
         LOG_DEBUG("Interpreter: Chamada de função com identificador nulo");
         throw RunTimeError("Chamada de função com identificador nulo");
     }
 
-    std::string func_name = call->getId()->getToken().getValue();
+    std::string func_name = call->getBase()->getToken().getValue();
     LOG_DEBUG("Interpreter: Avaliando chamada de função: " << func_name);
     // funções internas
     if (func_name == "print")
@@ -426,6 +443,76 @@ ValueWrapper Interpreter::evaluateFunctionCall(Call *call)
         }
         LOG_DEBUG("Interpreter: isalpha retornando false (não é string)");
         return ValueWrapper(false);
+    }
+    else if (func_name == "exp")
+    {
+        if (call->getArgs().empty() || !call->getArgs()[0])
+        {
+            LOG_DEBUG("Interpreter: exp chamado sem argumento válido");
+            throw RunTimeError("exp requer um argumento válido");
+        }
+        ValueWrapper arg = evaluate(call->getArgs()[0].get());
+        if (std::holds_alternative<double>(arg.data))
+        {
+            double input = std::get<double>(arg.data);
+            double result = std::exp(input);
+            LOG_DEBUG("Interpreter: exp retornando: " << result);
+            return ValueWrapper(result);
+        }
+        else
+        {
+            LOG_DEBUG("Interpreter: Erro, exp requer um número");
+            throw RunTimeError("exp requer um número como argumento");
+        }
+    }
+    else if (func_name == "rand")
+    {
+        size_t numArgs = call->getArgs().size();
+        if (numArgs == 0)
+        {
+            double random_val = static_cast<double>(rand()) / static_cast<double>(RAND_MAX);
+            LOG_DEBUG("Interpreter: random sem argumentos retornando: " << random_val);
+            return ValueWrapper(random_val);
+        }
+        else if (numArgs == 1)
+        {
+            ValueWrapper arg = evaluate(call->getArgs()[0].get());
+            if (std::holds_alternative<double>(arg.data))
+            {
+                double max_val = std::get<double>(arg.data);
+                double random_val = (static_cast<double>(rand()) / static_cast<double>(RAND_MAX)) * max_val;
+                LOG_DEBUG("Interpreter: random com 1 argumento retornando: " << random_val);
+                return ValueWrapper(random_val);
+            }
+            else
+            {
+                LOG_DEBUG("Interpreter: Erro, random requer um número como argumento");
+                throw RunTimeError("random requer um número como argumento");
+            }
+        }
+        else if (numArgs == 2)
+        {
+            ValueWrapper arg1 = evaluate(call->getArgs()[0].get());
+            ValueWrapper arg2 = evaluate(call->getArgs()[1].get());
+            if (std::holds_alternative<double>(arg1.data) && std::holds_alternative<double>(arg2.data))
+            {
+                double min_val = std::get<double>(arg1.data);
+                double max_val = std::get<double>(arg2.data);
+                double random_val = min_val + (static_cast<double>(rand()) / static_cast<double>(RAND_MAX)) * (max_val - min_val);
+                LOG_DEBUG("Interpreter: random com 2 argumentos retornando: " << random_val);
+                return ValueWrapper(random_val);
+            }
+            else
+            {
+                LOG_DEBUG("Interpreter: Erro, random requer números como argumentos");
+                throw RunTimeError("random requer números como argumentos");
+            }
+        }
+        else
+        {
+            LOG_DEBUG("Interpreter: Erro, random aceita no máximo 2 argumentos");
+            throw RunTimeError("random aceita no máximo 2 argumentos");
+        }
     }
     else if (functions.find(func_name) != functions.end())
     {
@@ -581,12 +668,12 @@ ValueWrapper Interpreter::evaluateUnary(Unary *unary)
         // Caso 2: Operando é um Access (posição de array)
         else if (auto *access = dynamic_cast<Access *>(operand))
         {
-            if (!access->getId() || !access->getExpr())
+            if (!access->getBase() || !access->getIndex())
             {
                 throw RunTimeError("Acesso com base ou índice nulo");
             }
-            std::string base_name = access->getId()->getToken().getValue();
-            ValueWrapper index_val = evaluate(access->getExpr());
+            std::string base_name = access->getBase()->getToken().getValue();
+            ValueWrapper index_val = evaluate(access->getIndex());
             if (!std::holds_alternative<double>(index_val.data))
             {
                 throw RunTimeError("Índice deve ser um número");
@@ -983,63 +1070,51 @@ void Interpreter::execute_stmt(Node *stmt)
         // Caso o lado esquerdo seja um acesso a elemento (array ou string)
         else if (auto *access = dynamic_cast<Access *>(left))
         {
-            std::string base_name = access->getId()->getToken().getValue();
-            ValueWrapper index_val = evaluate(access->getExpr());
-
-            if (std::holds_alternative<double>(index_val.data))
+            std::vector<int> indices;
+            std::vector<Expression *> access_chain;
+            Expression *current = access;
+            while (auto *acc = dynamic_cast<Access *>(current))
             {
-                int index = static_cast<int>(std::get<double>(index_val.data));
-                for (auto it = scopes.rbegin(); it != scopes.rend(); ++it)
+                ValueWrapper index_val = evaluate(acc->getIndex());
+                if (!std::holds_alternative<double>(index_val.data))
                 {
-                    auto var_it = it->variables.find(base_name);
-                    if (var_it != it->variables.end())
-                    {
-                        ValueWrapper &base_val = var_it->second;
-                        if (std::holds_alternative<std::vector<ValueWrapper>>(base_val.data))
-                        {
-                            auto &arr = std::get<std::vector<ValueWrapper>>(base_val.data);
-                            if (index >= 0 && index < arr.size())
-                            {
-                                arr[index] = value;
-                                LOG_DEBUG("Interpreter: Atribuindo " << base_name << "[" << index << "] = " << convert_value_to_string(value));
-                            }
-                            else
-                            {
-                                throw RunTimeError("Índice " + std::to_string(index) + " fora do intervalo para o array " + base_name);
-                            }
-                        }
-                        else if (std::holds_alternative<std::string>(base_val.data))
-                        {
-                            std::string &str = std::get<std::string>(base_val.data);
-                            if (index >= 0 && index < str.length())
-                            {
-                                if (std::holds_alternative<std::string>(value.data) && std::get<std::string>(value.data).length() == 1)
-                                {
-                                    str[index] = std::get<std::string>(value.data)[0];
-                                    LOG_DEBUG("Interpreter: Atribuindo " << base_name << "[" << index << "] = " << convert_value_to_string(value));
-                                }
-                                else
-                                {
-                                    throw RunTimeError("Atribuição a string requer um caractere");
-                                }
-                            }
-                            else
-                            {
-                                throw RunTimeError("Índice " + std::to_string(index) + " fora do intervalo para a string " + base_name);
-                            }
-                        }
-                        else
-                        {
-                            throw RunTimeError(base_name + " não é um array nem uma string");
-                        }
-                        return;
-                    }
+                    throw RunTimeError("Índice deve ser um número");
                 }
-                throw RunTimeError("Variável " + base_name + " não definida");
+                indices.push_back(static_cast<int>(std::get<double>(index_val.data)));
+                access_chain.push_back(acc);
+                current = acc->getBase();
             }
-            else
+            std::string base_name = dynamic_cast<ID *>(current)->getToken().getValue();
+
+            ValueWrapper *base_ptr = nullptr;
+            for (auto it = scopes.rbegin(); it != scopes.rend(); ++it)
             {
-                throw RunTimeError("Índice deve ser um número");
+                if (it->variables.count(base_name))
+                {
+                    base_ptr = &it->variables[base_name];
+                    break;
+                }
+            }
+            if (!base_ptr)
+                throw RunTimeError("Variável " + base_name + " não definida");
+
+            ValueWrapper *current_val = base_ptr;
+            for (int i = access_chain.size() - 1; i >= 0; --i)
+            {
+                auto &arr = std::get<std::vector<ValueWrapper>>(current_val->data);
+                int idx = indices[i];
+                if (idx < 0 || idx >= arr.size())
+                {
+                    throw RunTimeError("Índice " + std::to_string(idx) + " fora do intervalo");
+                }
+                if (i == 0)
+                {
+                    arr[idx] = value; // Atribuição no último nível
+                }
+                else
+                {
+                    current_val = &arr[idx];
+                }
             }
         }
         else
@@ -1198,22 +1273,38 @@ void Interpreter::execute_stmt(Node *stmt)
     else if (auto *array_decl = dynamic_cast<ArrayDecl *>(stmt))
     {
         std::string var_name = array_decl->getName();
-        ValueWrapper size_val = evaluate(array_decl->getSizeExpr());
-
-        if (!std::holds_alternative<double>(size_val.data))
+        std::vector<int> sizes;
+        for (const auto &dim : array_decl->getDimensions())
         {
-            throw RunTimeError("Tamanho do array '" + var_name + "' deve ser um número");
+            ValueWrapper size_val = evaluate(dim.get());
+            if (!std::holds_alternative<double>(size_val.data))
+            {
+                throw RunTimeError("Tamanho do array '" + var_name + "' deve ser um número");
+            }
+            int size = static_cast<int>(std::get<double>(size_val.data));
+            if (size < 0)
+            {
+                throw RunTimeError("Tamanho do array '" + var_name + "' não pode ser negativo");
+            }
+            sizes.push_back(size);
         }
 
-        int size = static_cast<int>(std::get<double>(size_val.data));
-        if (size < 0)
+        auto create_multi_array = [&](const std::vector<int> &dims, size_t level, auto &self) -> ValueWrapper
         {
-            throw RunTimeError("Tamanho do array '" + var_name + "' não pode ser negativo");
-        }
+            if (level == dims.size())
+            {
+                return ValueWrapper(0.0);
+            }
+            std::vector<ValueWrapper> arr(dims[level]);
+            for (auto &elem : arr)
+            {
+                elem = self(dims, level + 1, self);
+            }
+            return ValueWrapper(arr);
+        };
 
-        std::vector<ValueWrapper> arr(size, ValueWrapper(0.0));
-        scopes.back().variables[var_name] = ValueWrapper(arr);
-        LOG_DEBUG("Interpreter: Array '" << var_name << "' criado com tamanho " << size);
+        scopes.back().variables[var_name] = create_multi_array(sizes, 0, create_multi_array);
+        LOG_DEBUG("Interpreter: Array multidimensional '" << var_name << "' criado com dimensões " << sizes.size());
     }
     else
     {

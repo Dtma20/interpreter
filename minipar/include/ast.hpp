@@ -135,37 +135,16 @@ private:
     bool decl; // Indica se o identificador é uma declaração.
 };
 
-/**
- * @brief Representa um acesso a elemento (por exemplo, indexação em array ou string) na AST.
- */
 class Access : public Expression
 {
 public:
-    /**
-     * @brief Construtor para um acesso.
-     * @param type Tipo da expressão de acesso.
-     * @param token Token associado ao acesso.
-     * @param id Ponteiro único para o identificador base.
-     * @param expr Ponteiro único para a expressão que indica o índice.
-     */
-    Access(const std::string &type, const Token &token, std::unique_ptr<ID> id, std::unique_ptr<Expression> expr);
-
-    /**
-     * @brief Obtém o identificador base do acesso.
-     * @return Ponteiro para o ID.
-     */
-    ID *getId() const;
-
-    /**
-     * @brief Obtém a expressão de índice do acesso.
-     * @return Ponteiro para a expressão.
-     */
-    Expression *getExpr() const;
+    Access(const std::string &type, const Token &token, std::unique_ptr<Expression> base, std::unique_ptr<Expression> index);
+    Expression *getBase() const;  // Alterado de getId para refletir o novo tipo
+    Expression *getIndex() const; // Alterado de getExpr para maior clareza
     std::vector<Node *> getAttributes() override { return {}; }
-
 private:
-    std::unique_ptr<ID> id;           // Identificador base.
-    std::unique_ptr<Expression> expr; // Expressão de índice.
+    std::unique_ptr<Expression> base;  // Alterado de std::unique_ptr<ID>
+    std::unique_ptr<Expression> index; // Renomeado de expr
 };
 
 /**
@@ -310,39 +289,15 @@ private:
 class Call : public Expression
 {
 public:
-    /**
-     * @brief Construtor para uma chamada de função.
-     * @param type Tipo da chamada.
-     * @param token Token representando a chamada.
-     * @param id Ponteiro único para o identificador da função.
-     * @param args Lista de argumentos passados para a função.
-     * @param oper Operador ou nome associado à chamada.
-     */
-    Call(const std::string &type, const Token &token, std::unique_ptr<ID> id, Arguments args, const std::string &oper);
-
-    /**
-     * @brief Obtém o identificador da função chamada.
-     * @return Ponteiro para o ID.
-     */
-    ID *getId() const;
-
-    /**
-     * @brief Obtém os argumentos da chamada de função.
-     * @return Referência constante para a lista de argumentos.
-     */
+    Call(const std::string &type, const Token &token, std::unique_ptr<Expression> base, Arguments args, const std::string &oper);
+    Expression *getBase() const; // Alterado de getId
     const Arguments &getArgs() const;
-
-    /**
-     * @brief Obtém o operador ou nome associado à chamada.
-     * @return Operador ou nome como string.
-     */
     std::string getOper() const;
     std::vector<Node *> getAttributes() override { return {}; }
-
 private:
-    std::unique_ptr<ID> id; // Identificador da função.
-    Arguments args;         // Lista de argumentos.
-    std::string oper;       // Operador ou nome.
+    std::unique_ptr<Expression> base; // Alterado de std::unique_ptr<ID>
+    Arguments args;                   // Lista de argumentos.
+    std::string oper;                 // Operador ou nome.
 };
 
 // ======================================================================
@@ -360,9 +315,6 @@ private:
     std::unique_ptr<Node> stmt;
 };
 
-/**
- * @brief Representa uma instrução de atribuição.
- */
 class Assign : public Statement
 {
 public:
@@ -370,8 +322,11 @@ public:
      * @brief Construtor para uma atribuição.
      * @param left Ponteiro único para a expressão do lado esquerdo.
      * @param right Ponteiro único para a expressão do lado direito.
+     * @param isDecl Indica se é uma declaração (padrão: false).
+     * @param type Tipo da variável, se for uma declaração (padrão: vazio).
      */
-    Assign(std::unique_ptr<Expression> left, std::unique_ptr<Expression> right);
+    Assign(std::unique_ptr<Expression> left, std::unique_ptr<Expression> right, 
+           bool isDecl = false, std::string type = "");
 
     /**
      * @brief Obtém a expressão do lado esquerdo.
@@ -384,11 +339,26 @@ public:
      * @return Ponteiro para a expressão.
      */
     Expression *getRight() const;
+
+    /**
+     * @brief Verifica se a atribuição é uma declaração.
+     * @return true se for uma declaração, false caso contrário.
+     */
+    bool isDeclaration() const;
+
+    /**
+     * @brief Obtém o tipo da variável, se for uma declaração.
+     * @return String com o tipo da variável.
+     */
+    std::string getVarType() const;
+
     std::vector<Node *> getAttributes() override { return {}; }
 
 private:
     std::unique_ptr<Expression> left;  // Expressão do lado esquerdo.
     std::unique_ptr<Expression> right; // Expressão do lado direito.
+    bool isDecl;                       // Indica se é uma declaração.
+    std::string varType;               // Tipo da variável, se for uma declaração.
 };
 
 /**
@@ -726,24 +696,22 @@ public:
     }
 };
 
-class ArrayDecl : public Node
-{
-public:
-    ArrayDecl(const std::string &name, std::unique_ptr<Expression> size)
-        : name(name), size(std::move(size)) {}
-
-    std::string getName() const { return name; }
-    Expression *getSizeExpr() const { return size.get(); }
-
-    // Implementação da função virtual pura
-    std::vector<Node *> getAttributes() override
-    {
-        return {size.get()}; // Retorna a expressão de tamanho como atributo
-    }
-
-private:
-    std::string name;
-    std::unique_ptr<Expression> size;
+class ArrayDecl : public Node {
+    private:
+        std::string name;
+        std::vector<std::unique_ptr<Expression>> dimensions;
+    public:
+        ArrayDecl(const std::string &name, std::vector<std::unique_ptr<Expression>> dims)
+            : name(name), dimensions(std::move(dims)) {}
+        const std::string &getName() const { return name; }
+        const std::vector<std::unique_ptr<Expression>> &getDimensions() const { return dimensions; }
+        std::vector<Node *> getAttributes() override {
+            std::vector<Node *> attrs;
+            for (auto &dim : dimensions) {
+                attrs.push_back(dim.get());
+            }
+            return attrs;
+        }
 };
 
 #endif // AST_HPP

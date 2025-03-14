@@ -1,7 +1,7 @@
-input_val : num = 1
-output_desire : num = 0
-input_weight : num = 0.5
-lr : num = 0.01
+input_val: num = 1
+output_desire: num = 0
+input_weight: num = 0.5
+lr: num = 0.01
 
 func activation(sum : num) -> num {
     if (sum >= 0) {
@@ -14,21 +14,22 @@ func activation(sum : num) -> num {
 print("Entrada: ", input_val, " Desejado: ", output_desire)
 
 # Inicializa Erro
-error : num = 1000.0
-iteration : num = 0
-bias : num = 1
-bias_weight : num = 0.5
+error: num = 1000.0
+iteration: num = 0
+bias: num = 1
+bias_weight: num = 0.5
 
 while (error != 0) {
     iteration = iteration + 1
     print("### Iteração: ", iteration)
     print("Peso: ", input_weight)
 
-    sum : num = (input_val * input_weight) + (bias * bias_weight)
-    output : num = activation(sum)
+    sum: num = (input_val * input_weight) + (bias * bias_weight)
+    output: num = activation(sum)
 
     print("Saída: ", output)
-    error : num = output_desire - output
+    
+    error = output_desire - output
     print("Erro: ", error)
 
     if (error != 0) {

@@ -1,13 +1,12 @@
-n: number = 6
-a: number = 0
-b: number = 1
-i: number = 0
+n: num = 6
+a: num = 0
+b: num = 1
+c: num = 0
 
-while (i < n - 1) {
-    c: number = a + b
+for(i: num = 1; i < n; i++) {
+    c = a + b
     a = b
     b = c
-    i = i + 1
 }
 
 print(c)

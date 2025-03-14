@@ -8,7 +8,6 @@
 
 int main(int argc, char* argv[]) {
     std::string source_code;
-
     if (argc > 1) {
         std::ifstream file(argv[1]);
         if (!file.is_open()) {

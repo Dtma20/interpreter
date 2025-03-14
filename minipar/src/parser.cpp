@@ -254,36 +254,35 @@ std::unique_ptr<Node> Parser::stmtId()
 ///
 /// @param id_name Nome do array
 /// @return Um nó do tipo Access ou Unary, dependendo do caso
-std::unique_ptr<Node> Parser::processArrayAccessStmt(const std::string &id_name)
-{
-    match("LBRACK");
-    auto index = disjunction();
-    if (!match("RBRACK"))
-        throw SyntaxError(lineno, "Esperado ']' no lugar de " + lookahead.getValue());
-    skipWhitespace();
-    if (lookahead.getTag() == "INC" || lookahead.getTag() == "DEC")
-    {
-        // Pós-incremento ou pós-decremento
+std::unique_ptr<Node> Parser::processArrayAccessStmt(const std::string &id_name) {
+    auto base = std::make_unique<ID>("", Token("ID", id_name));
+    std::unique_ptr<Expression> current_access = std::move(base);
+
+    while (lookahead.getTag() == "LBRACK") {
+        match("LBRACK");
+        auto index = disjunction();
+        if (!match("RBRACK"))
+            throw SyntaxError(lineno, "Esperado ']' no lugar de " + lookahead.getValue());
+        current_access = std::make_unique<Access>("NUM", Token("ACCESS", "[]"),
+                                                  std::move(current_access), std::move(index));
+        skipWhitespace();
+    }
+
+    if (lookahead.getTag() == "INC" || lookahead.getTag() == "DEC") {
         Token token = lookahead;
         match(lookahead.getTag());
-        auto access = std::make_unique<Access>("NUM", Token("ACCESS", "[]"),
-                                               std::make_unique<ID>("", Token("ID", id_name)),
-                                               std::move(index));
-        auto unary = std::make_unique<Unary>("NUM", token, std::move(access), true);
+        auto unary = std::make_unique<Unary>("NUM", token, std::move(current_access), true);
         skipWhitespace();
         return unary;
     }
-    if (!match("ASSIGN"))
-        throw SyntaxError(lineno, "Esperado '=' após acesso a índice em lugar de " + lookahead.getValue());
-    skipWhitespace();
-    auto right = arithmetic();
-    skipWhitespace();
-    auto access = std::make_unique<Access>("NUM", Token("ACCESS", "[]"),
-                                           std::make_unique<ID>("", Token("ID", id_name)),
-                                           std::move(index));
-    return std::make_unique<Assign>(std::move(access), std::move(right));
+    if (match("ASSIGN")) {
+        skipWhitespace();
+        auto right = arithmetic();
+        skipWhitespace();
+        return std::make_unique<Assign>(std::move(current_access), std::move(right));
+    }
+    return current_access;
 }
-
 // Processa operador unário pós-fixado (ex.: x++ ou x--)
 std::unique_ptr<Node> Parser::processPostfixUnaryStmt(const std::string &id_name)
 {
@@ -312,37 +311,37 @@ std::unique_ptr<Node> Parser::processTypeDeclarationStmt(const std::string &id_n
     {
         match("TYPE");
         skipWhitespace();
-        if (lookahead.getTag() == "LBRACK")
+
+        std::vector<std::unique_ptr<Expression>> dimensions;
+        while (lookahead.getTag() == "LBRACK")
         {
             match("LBRACK");
             auto size_expr = disjunction();
             if (!match("RBRACK"))
                 throw SyntaxError(lineno, "Esperado ']' após expressão de tamanho");
+            dimensions.push_back(std::move(size_expr));
             skipWhitespace();
-            if (lookahead.getTag() == "ASSIGN")
-            {
-                match("ASSIGN");
-                skipWhitespace();
-                auto right = arithmetic();
-                skipWhitespace();
-                auto array_decl = std::make_unique<ArrayDecl>(id_name, std::move(size_expr));
-                auto assign = std::make_unique<Assign>(
-                    std::make_unique<ID>("ID", Token("ID", id_name)),
-                    std::move(right));
-                Body seq_body;
-                seq_body.push_back(std::move(array_decl));
-                seq_body.push_back(std::move(assign));
-                return std::make_unique<Seq>(std::make_unique<Body>(std::move(seq_body)));
-            }
-            else
-            {
-                return std::make_unique<ArrayDecl>(id_name, std::move(size_expr));
-            }
         }
-        else
+
+        if (dimensions.empty())
+            throw SyntaxError(lineno, "Esperado pelo menos uma dimensão após 'array'");
+
+        if (lookahead.getTag() == "ASSIGN")
         {
-            throw SyntaxError(lineno, "Esperado '[' após 'array'");
+            match("ASSIGN");
+            skipWhitespace();
+            auto right = arithmetic();
+            skipWhitespace();
+            auto array_decl = std::make_unique<ArrayDecl>(id_name, std::move(dimensions));
+            auto assign = std::make_unique<Assign>(
+                std::make_unique<ID>("ID", Token("ID", id_name)),
+                std::move(right));
+            Body seq_body;
+            seq_body.push_back(std::move(array_decl));
+            seq_body.push_back(std::move(assign));
+            return std::make_unique<Seq>(std::make_unique<Body>(std::move(seq_body)));
         }
+        return std::make_unique<ArrayDecl>(id_name, std::move(dimensions));
     }
     else
     {
@@ -1060,6 +1059,8 @@ std::unique_ptr<Expression> Parser::primary()
     {
         std::string name = lookahead.getValue();
         match("ID");
+        std::unique_ptr<Expression> expr = std::make_unique<ID>("", Token("ID", name));
+    
         if (lookahead.getTag() == "LPAREN")
         {
             match("LPAREN");
@@ -1077,46 +1078,29 @@ std::unique_ptr<Expression> Parser::primary()
             {
                 throw SyntaxError(lineno, "Esperado ')' no lugar de " + lookahead.getValue());
             }
-            return std::make_unique<Call>("", Token("ID", name),
-                                          std::make_unique<ID>("", Token("ID", name)),
-                                          std::move(args), name);
+            return std::make_unique<Call>("", Token("ID", name), std::move(expr), std::move(args), name);
         }
-        else if (lookahead.getTag() == "LBRACK")
+        else
         {
-            match("LBRACK");
-            auto index = disjunction();
-            if (!match("RBRACK"))
+            while (lookahead.getTag() == "LBRACK")
             {
-                throw SyntaxError(lineno, "Esperado ']' no lugar de " + lookahead.getValue());
+                match("LBRACK");
+                auto index = disjunction();
+                if (!match("RBRACK"))
+                {
+                    throw SyntaxError(lineno, "Esperado ']' no lugar de " + lookahead.getValue());
+                }
+                expr = std::make_unique<Access>("STRING", Token("ACCESS", "[]"), std::move(expr), std::move(index));
             }
+    
             if (lookahead.getTag() == "INC" || lookahead.getTag() == "DEC")
             {
                 Token token = lookahead;
                 match(lookahead.getTag());
-                auto access = std::make_unique<Access>("STRING", Token("ACCESS", "[]"),
-                                                       std::make_unique<ID>("", Token("ID", name)),
-                                                       std::move(index));
-                return std::make_unique<Unary>("NUM", token, std::move(access), true); // true para pós-fixado
+                return std::make_unique<Unary>("NUM", token, std::move(expr), true);
             }
-            return std::make_unique<Access>("STRING", Token("ACCESS", "[]"),
-                                            std::make_unique<ID>("", Token("ID", name)),
-                                            std::move(index));
+            return expr;
         }
-        else if (lookahead.getTag() == "INC") // x++
-        {
-            Token token = lookahead;
-            match("INC");
-            auto id = std::make_unique<ID>("", Token("ID", name));
-            return std::make_unique<Unary>("NUM", token, std::move(id), true);
-        }
-        else if (lookahead.getTag() == "DEC") // x--
-        {
-            Token token = lookahead;
-            match("DEC");
-            auto id = std::make_unique<ID>("", Token("ID", name));
-            return std::make_unique<Unary>("NUM", token, std::move(id), true);
-        }
-        return std::make_unique<ID>("", Token("ID", name));
     }
     else if (lookahead.getTag() == "LPAREN")
     {

@@ -79,27 +79,18 @@ bool ID::isDecl() const
  * @param id Ponteiro único para o identificador base.
  * @param expr Ponteiro único para a expressão que indica o índice ou campo de acesso.
  */
-Access::Access(const std::string &type, const Token &token, std::unique_ptr<ID> id, std::unique_ptr<Expression> expr)
-    : Expression(type, token), id(std::move(id)), expr(std::move(expr)) {}
+Access::Access(const std::string &type, const Token &token, std::unique_ptr<Expression> base, std::unique_ptr<Expression> index)
+    : Expression(type, token), base(std::move(base)), index(std::move(index)) {}
 
-/**
- * @brief Obtém o identificador associado ao acesso.
- * @return Ponteiro para o objeto ID.
- */
-ID *Access::getId() const
+Expression *Access::getBase() const
 {
-    return id.get();
+    return base.get();
 }
 
-/**
- * @brief Obtém a expressão associada ao acesso.
- * @return Ponteiro para a expressão.
- */
-Expression *Access::getExpr() const
+Expression *Access::getIndex() const
 {
-    return expr.get();
+    return index.get();
 }
-
 /**
  * @brief Construtor da classe Logical.
  *
@@ -237,16 +228,12 @@ bool Unary::isPostfix() const
  * @param args Lista de argumentos passados para a função.
  * @param oper Operador associado à chamada (se aplicável).
  */
-Call::Call(const std::string &type, const Token &token, std::unique_ptr<ID> id, Arguments args, const std::string &oper)
-    : Expression(type, token), id(std::move(id)), args(std::move(args)), oper(oper) {}
+Call::Call(const std::string &type, const Token &token, std::unique_ptr<Expression> base, Arguments args, const std::string &oper)
+    : Expression(type, token), base(std::move(base)), args(std::move(args)), oper(oper) {}
 
-/**
- * @brief Obtém o identificador da função chamada.
- * @return Ponteiro para o objeto ID.
- */
-ID *Call::getId() const
+Expression *Call::getBase() const
 {
-    return id.get();
+    return base.get();
 }
 
 /**
@@ -275,25 +262,23 @@ std::string Call::getOper() const
  * @param left Ponteiro único para a expressão do lado esquerdo.
  * @param right Ponteiro único para a expressão do lado direito.
  */
-Assign::Assign(std::unique_ptr<Expression> left, std::unique_ptr<Expression> right)
-    : left(std::move(left)), right(std::move(right)) {}
+Assign::Assign(std::unique_ptr<Expression> left, std::unique_ptr<Expression> right, bool isDecl, std::string type)
+    : left(std::move(left)), right(std::move(right)), isDecl(isDecl), varType(type) {}
 
-/**
- * @brief Obtém a expressão do lado esquerdo da atribuição.
- * @return Ponteiro para a expressão.
- */
-Expression *Assign::getLeft() const
-{
+Expression* Assign::getLeft() const {
     return left.get();
 }
 
-/**
- * @brief Obtém a expressão do lado direito da atribuição.
- * @return Ponteiro para a expressão.
- */
-Expression *Assign::getRight() const
-{
+Expression* Assign::getRight() const {
     return right.get();
+}
+
+bool Assign::isDeclaration() const {
+    return isDecl;
+}
+
+std::string Assign::getVarType() const {
+    return varType;
 }
 
 /**

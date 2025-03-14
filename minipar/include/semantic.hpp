@@ -43,10 +43,10 @@ public:
 class SemanticAnalyzer : public ISemanticAnalyzer
 {
 private:
-    std::vector<Node *> context_stack;                         ///< Pilha de contexto para rastrear escopos e blocos.
-    std::unordered_map<std::string, FuncDef *> function_table; ///< Tabela de funções definidas no código.
-    std::vector<std::string> default_func_names;               ///< Lista de funções embutidas (built-in).
-
+    std::vector<Node *> context_stack;                         // Pilha de contexto para rastrear escopos e blocos.
+    std::unordered_map<std::string, FuncDef *> function_table; // Tabela de funções definidas no código.
+    std::vector<std::string> default_func_names;               // Lista de funções embutidas (built-in).
+    std::vector<std::unordered_map<std::string, std::string>> scope_stack; // Pilha de escopos
     /**
      * @brief Avalia um nó da AST e retorna seu tipo como string.
      *
