@@ -1,43 +1,91 @@
-input_val: num = 1
-output_desire: num = 0
-input_weight: num = 0.5
-lr: num = 0.01
+epochs: num = 100000
+learning_rate: num = 0.25
 
-func activation(sum : num) -> num {
-    if (sum >= 0) {
-        return 1
-    } else {
-        return 0
+output_biases : array[1] = [rand(-0.5, 0.5)]
+hidden_biases : array[2] = [rand(-0.5, 0.5), rand(-0.5, 0.5)]
+
+data_outputs : array[4] = [0, 1, 1, 0]
+output_weights : array[1][2] = [[rand(-0.5, 0.5), rand(-0.5, 0.5)]]
+hidden_weights : array[2][2] = [
+    [rand(-0.5, 0.5), rand(-0.5, 0.5)],
+    [rand(-0.5, 0.5), rand(-0.5, 0.5)]
+]
+
+data_inputs : array[4][2] = [[0, 0], [0, 1], [1, 0], [1, 1]]
+
+func sigmoid(x: num) -> num {
+    return 1 / (1 + exp(-x))
+}
+
+func dsigmoid(y: num) -> num {
+    return y * (1 - y)
+}
+
+for(i: num = 0; i < epochs; i++) {
+    for(j: num = 0; j < 4; j++) {
+        # Propagação para frente na camada oculta
+        hidden_sum0: num = data_inputs[j][0] * hidden_weights[0][0] +
+                           data_inputs[j][1] * hidden_weights[0][1] +
+                           hidden_biases[0]
+        hidden_out0: num = sigmoid(hidden_sum0)
+        
+        hidden_sum1: num = data_inputs[j][0] * hidden_weights[1][0] +
+                           data_inputs[j][1] * hidden_weights[1][1] +
+                           hidden_biases[1]
+        hidden_out1: num = sigmoid(hidden_sum1)
+        
+        # Propagação para frente na camada de saída
+        output_sum: num = hidden_out0 * output_weights[0][0] +
+                          hidden_out1 * output_weights[0][1] +
+                          output_biases[0]
+        predicted: num = sigmoid(output_sum)
+        
+        # Cálculo do erro e do delta da camada de saída
+        error: num = data_outputs[j] - predicted
+        delta_output: num = error * dsigmoid(predicted)
+        
+        # Armazenar os pesos atuais da camada de saída antes de atualizá-los
+        old_weight0: num = output_weights[0][0]
+        old_weight1: num = output_weights[0][1]
+        
+        # Atualização dos pesos e bias da camada de saída
+        output_weights[0][0] = output_weights[0][0] + learning_rate * delta_output * hidden_out0
+        output_weights[0][1] = output_weights[0][1] + learning_rate * delta_output * hidden_out1
+        output_biases[0] = output_biases[0] + learning_rate * delta_output
+        
+        # Cálculo do delta para os neurônios da camada oculta usando os pesos antigos
+        delta_hidden0: num = delta_output * old_weight0 * dsigmoid(hidden_out0)
+        delta_hidden1: num = delta_output * old_weight1 * dsigmoid(hidden_out1)
+        
+        # Atualização dos pesos e biases da camada oculta
+        hidden_weights[0][0] = hidden_weights[0][0] + learning_rate * delta_hidden0 * data_inputs[j][0]
+        hidden_weights[0][1] = hidden_weights[0][1] + learning_rate * delta_hidden0 * data_inputs[j][1]
+        hidden_biases[0] = hidden_biases[0] + learning_rate * delta_hidden0
+        
+        hidden_weights[1][0] = hidden_weights[1][0] + learning_rate * delta_hidden1 * data_inputs[j][0]
+        hidden_weights[1][1] = hidden_weights[1][1] + learning_rate * delta_hidden1 * data_inputs[j][1]
+        hidden_biases[1] = hidden_biases[1] + learning_rate * delta_hidden1
     }
 }
 
-print("Entrada: ", input_val, " Desejado: ", output_desire)
-
-# Inicializa Erro
-error: num = 1000.0
-iteration: num = 0
-bias: num = 1
-bias_weight: num = 0.5
-
-while (error != 0) {
-    iteration = iteration + 1
-    print("### Iteração: ", iteration)
-    print("Peso: ", input_weight)
-
-    sum: num = (input_val * input_weight) + (bias * bias_weight)
-    output: num = activation(sum)
-
-    print("Saída: ", output)
+for(j: num = 0; j < 4; j++) {
+    hidden_sum0 = data_inputs[j][0] * hidden_weights[0][0] +
+                  data_inputs[j][1] * hidden_weights[0][1] +
+                  hidden_biases[0]
+    hidden_out0 = sigmoid(hidden_sum0)
     
-    error = output_desire - output
-    print("Erro: ", error)
-
-    if (error != 0) {
-        input_weight = input_weight + (lr * input_val * error)
-        print("Peso do bias: ", bias_weight)
-        bias_weight = bias_weight + (lr * bias * error)
-    }
+    hidden_sum1 = data_inputs[j][0] * hidden_weights[1][0] +
+                  data_inputs[j][1] * hidden_weights[1][1] +
+                  hidden_biases[1]
+    hidden_out1 = sigmoid(hidden_sum1)
+    
+    output_sum = hidden_out0 * output_weights[0][0] +
+                 hidden_out1 * output_weights[0][1] +
+                 output_biases[0]
+    predicted = sigmoid(output_sum)
+    
+    print("Entrada:")
+    print(data_inputs[j])
+    print("Saída prevista:")
+    print(predicted)
 }
-
-print("A Rede de um Neurônio Aprendeu")
-print("Valor desejado: ", output_desire)
