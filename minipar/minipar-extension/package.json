@@ -1,0 +1,38 @@
+{
+    "name": "minipar-extension",
+    "displayName": "Minipar Language Support",
+    "description": "Suporte para a linguagem Minipar no VSCode, incluindo destaque de sintaxe e tema personalizado.",
+    "version": "0.0.1",
+    "publisher": "seu-nome",
+    "engines": {
+      "vscode": "^1.60.0"
+    },
+    "categories": [
+      "Programming Languages",
+      "Themes"
+    ],
+    "contributes": {
+      "languages": [
+        {
+          "id": "minipar",
+          "aliases": ["Minipar", "minipar"],
+          "extensions": [".minipar"],
+          "configuration": "./language-configuration.json"
+        }
+      ],
+      "grammars": [
+        {
+          "language": "minipar",
+          "scopeName": "source.minipar",
+          "path": "./syntaxes/minipar.tmLanguage.json"
+        }
+      ],
+      "themes": [
+        {
+          "label": "Minipar Theme",
+          "uiTheme": "vs-dark",
+          "path": "./themes/minipar-theme.json"
+        }
+      ]
+    }
+  }

@@ -1,0 +1,66 @@
+{
+    "name": "Minipar Theme",
+    "type": "dark",
+    "colors": {
+      "editor.background": "#1E1E1E",
+      "editor.foreground": "#D4D4D4"
+    },
+    "tokenColors": [
+      {
+        "name": "Comentários",
+        "scope": "comment.line.minipar",
+        "settings": {
+          "foreground": "#6A9955"
+        }
+      },
+      {
+        "name": "Palavras-chave",
+        "scope": "keyword.control.minipar",
+        "settings": {
+          "foreground": "#569CD6"
+        }
+      },
+      {
+        "name": "Tipos",
+        "scope": "storage.type.minipar",
+        "settings": {
+          "foreground": "#4EC9B0"
+        }
+      },
+      {
+        "name": "Strings",
+        "scope": "string.quoted.double.minipar",
+        "settings": {
+          "foreground": "#CE9178"
+        }
+      },
+      {
+        "name": "Números",
+        "scope": "constant.numeric.minipar",
+        "settings": {
+          "foreground": "#B5CEA8"
+        }
+      },
+      {
+        "name": "Funções",
+        "scope": "entity.name.function.minipar",
+        "settings": {
+          "foreground": "#DCDCAA"
+        }
+      },
+      {
+        "name": "Variáveis",
+        "scope": "variable.minipar",
+        "settings": {
+          "foreground": "#9CDCFE"
+        }
+      },
+      {
+        "name": "Operadores",
+        "scope": "keyword.operator.minipar",
+        "settings": {
+          "foreground": "#D4D4D4"
+        }
+      }
+    ]
+  }
