@@ -18,6 +18,21 @@
 #include <cmath>
 #include "../include/debug.hpp"
 
+/**
+ * @brief Remove escape sequences de uma string.
+ *
+ * Substitui sequências de escape no formato "\x" por seu caractere
+ * correspondente. As sequências de escape suportadas são:
+ *
+ * - \n: nova linha
+ * - \t: tabulação horizontal
+ * - \r: carriage return
+ * - \\: barra invertida
+ * - \": aspas duplas
+ *
+ * @param input String contendo as sequências de escape a serem removidas.
+ * @return String sem as sequências de escape.
+ */
 std::string unescape_string(const std::string &input)
 {
     std::string result;
@@ -194,6 +209,16 @@ ValueWrapper Interpreter::evaluate(Expression *expr)
     throw RunTimeError("Expressão não suportada");
 }
 
+/**
+ * @brief Avalia um identificador (ID) e retorna o valor associado.
+ *
+ * @param id Ponteiro para o objeto ID que representa o identificador a ser avaliado.
+ * 
+ * @return ValueWrapper contendo o valor associado ao identificador, se encontrado.
+ * 
+ * Lança uma exceção RunTimeError se o identificador não estiver definido em nenhum dos escopos.
+ */
+
 ValueWrapper Interpreter::evaluateID(ID *id)
 {
     std::string var_name = id->getToken().getValue();
@@ -212,6 +237,16 @@ ValueWrapper Interpreter::evaluateID(ID *id)
     throw RunTimeError("Variável não definida: " + var_name);
 }
 
+
+/**
+ * @brief Avalia uma constante e retorna o valor associado.
+ *
+ * @param constant Ponteiro para o objeto Constant que representa a constante a ser avaliada.
+ *
+ * @return ValueWrapper contendo o valor associado à constante, se encontrado.
+ *
+ * Lança uma exceção RunTimeError se o tipo de constante não for suportado.
+ */
 ValueWrapper Interpreter::evaluateConstant(Constant *constant)
 {
     std::string valueStr = constant->getToken().getValue();
@@ -240,6 +275,15 @@ ValueWrapper Interpreter::evaluateConstant(Constant *constant)
     LOG_DEBUG("Interpreter: Erro, tipo de constante não suportado: " << typeStr);
     throw RunTimeError("Tipo de constante não suportado: " + typeStr);
 }
+/**
+ * @brief Avalia um array e retorna um ValueWrapper contendo o vetor de valores.
+ *
+ * @param array Ponteiro para o objeto Array que representa o array a ser avaliado.
+ *
+ * @return ValueWrapper contendo o vetor de valores do array avaliado.
+ *
+ * Lança uma exceção RunTimeError se houver algum elemento nulo ou não inicializado no array.
+ */
 ValueWrapper Interpreter::evaluateArray(Array *array)
 {
     std::vector<ValueWrapper> elements;
@@ -263,6 +307,17 @@ ValueWrapper Interpreter::evaluateArray(Array *array)
     return ValueWrapper(elements);
 }
 
+/**
+ * @brief Avalia um acesso (array ou string) e retorna um ValueWrapper contendo o valor
+ *        no índice especificado.
+ *
+ * @param access Ponteiro para o objeto Access que representa o acesso a ser avaliado.
+ *
+ * @return ValueWrapper contendo o valor do elemento no índice especificado.
+ *
+ * Lança uma exceção RunTimeError se o tipo de acesso for inválido ou se o índice for
+ * fora do intervalo.
+ */
 ValueWrapper Interpreter::evaluateAccess(Access *access)
 {
     if (!access->getBase() || !access->getIndex())
@@ -307,6 +362,19 @@ ValueWrapper Interpreter::evaluateAccess(Access *access)
     throw RunTimeError("Tipo inválido para acesso");
 }
 
+
+/**
+ * @brief Avalia uma chamada de função e retorna um ValueWrapper contendo o valor
+ *        retornado pela função.
+ *
+ * @param call Ponteiro para o objeto Call que representa a chamada de função a ser
+ *             avaliada.
+ *
+ * @return ValueWrapper contendo o valor retornado pela função.
+ *
+ * Lança uma exceção RunTimeError se a função não for suportada ou se houver algum
+ * erro na avaliação da chamada de função.
+ */
 ValueWrapper Interpreter::evaluateFunctionCall(Call *call)
 {
     if (!call->getBase())
@@ -599,6 +667,17 @@ ValueWrapper Interpreter::evaluateFunctionCall(Call *call)
     throw RunTimeError("Função não suportada: " + func_name);
 }
 
+/**
+ * @brief Avalia uma expressão relacional (comparação entre dois operandos)
+ *
+ * @param relational Ponteiro para o objeto Relational que representa a expressão
+ *        relacional a ser avaliada.
+ *
+ * @return ValueWrapper contendo o resultado da avaliação da expressão relacional.
+ *
+ * Lança uma exceção RunTimeError se os operandos forem nulos ou se os tipos forem incompatíveis
+ * com o operador relacional.
+ */
 ValueWrapper Interpreter::evaluateRelational(Relational *relational)
 {
     LOG_DEBUG("Interpreter: Avaliando operação relacional");
@@ -644,6 +723,19 @@ ValueWrapper Interpreter::evaluateRelational(Relational *relational)
     throw RunTimeError("Operador relacional '" + op + "' requer operandos numéricos ou strings compatíveis");
 }
 
+
+
+/**
+ * @brief Avalia uma expressão aritmética (operação entre dois operandos numéricos)
+ *
+ * @param arithmetic Ponteiro para o objeto Arithmetic que representa a expressão
+ *        aritmética a ser avaliada.
+ *
+ * @return ValueWrapper contendo o resultado da avaliação da expressão aritmética.
+ *
+ * Lança uma exceção RunTimeError se os operandos forem nulos ou se os tipos forem incompatíveis
+ * com o operador aritmético.
+ */
 ValueWrapper Interpreter::evaluateArithmetic(Arithmetic *arithmetic)
 {
     LOG_DEBUG("Interpreter: Avaliando operação aritmética");
@@ -682,6 +774,17 @@ ValueWrapper Interpreter::evaluateArithmetic(Arithmetic *arithmetic)
     throw RunTimeError("Operador aritmético '" + op + "' requer operandos numéricos");
 }
 
+/**
+ * @brief Avalia uma expressão unária (operação com um operando).
+ *
+ * @param unary Ponteiro para o objeto Unary que representa a expressão unária a
+ *        ser avaliada.
+ *
+ * @return ValueWrapper contendo o resultado da avaliação da expressão unária.
+ *
+ * Lança uma exceção RunTimeError se o operando for nulo ou se o tipo for incompatível
+ * com o operador unário.
+ */
 ValueWrapper Interpreter::evaluateUnary(Unary *unary)
 {
     LOG_DEBUG("Interpreter: Avaliando operação unária");
@@ -821,6 +924,16 @@ ValueWrapper Interpreter::evaluateUnary(Unary *unary)
     throw RunTimeError("Operador unário não suportado: " + op);
 }
 
+/**
+ * @brief Avalia uma expressão lógica (AND ou OR) e retorna um ValueWrapper com o resultado.
+ *
+ * @param logical Ponteiro para o objeto Logical que representa a expressão lógica a ser avaliada.
+ *
+ * @return ValueWrapper com o resultado da avaliação da expressão lógica.
+ *
+ * Lança uma exceção RunTimeError se os operandos forem nulos ou se o operador lógico for
+ * inválido.
+ */
 ValueWrapper Interpreter::evaluateLogical(Logical *logical)
 {
     LOG_DEBUG("Interpreter: Avaliando operação lógica");
@@ -1327,11 +1440,9 @@ void Interpreter::execute(Module *module)
         throw RunTimeError("Módulo vazio");
     }
 
-    // Verifica se o nó raiz é um Seq
     if (auto *seq = dynamic_cast<Seq *>(root_stmt))
     {
         LOG_DEBUG("Interpreter: Módulo contém um Seq, isBlock() = " << (seq->isBlock() ? "true" : "false"));
-        // Se isBlock() é false, usa o escopo global existente; se true, cria um novo escopo
         if (seq->isBlock())
         {
             push_scope();
