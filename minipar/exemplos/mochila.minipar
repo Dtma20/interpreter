@@ -17,4 +17,4 @@ for (i: num = 0; i < n; i++) {
     }
 }
 
-print(dp[w])
+print(dp)

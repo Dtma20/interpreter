@@ -28,6 +28,7 @@ func quicksort(arr: array, low: num, high: num) -> void {
 }
 
 arr: array[5] = [randi(0, 10), randi(0, 10), randi(0, 10), randi(0, 10), randi(0, 10)]
+
 n: num = len(arr)
 
 print("Antes:", arr)
