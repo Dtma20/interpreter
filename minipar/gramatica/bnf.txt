@@ -1,0 +1,94 @@
+<program> ::= <stmts>
+
+<stmts> ::= <stmt> <stmts> | ε
+
+<stmt> ::= <stmt_unary_prefix>
+         | <stmt_id>
+         | <stmt_func>
+         | <stmt_if>
+         | <stmt_while>
+         | <stmt_return>
+         | <stmt_break>
+         | <stmt_continue>
+         | <stmt_seq>
+         | <stmt_par>
+         | <stmt_c_channel>
+         | <stmt_s_channel>
+         | <stmt_for>
+
+<stmt_unary_prefix> ::= ("++" | "--") ID
+
+<stmt_id> ::= ID <stmt_id_suffix>
+
+<stmt_id_suffix> ::= "[" <disjunction> "]" <array_access_suffix>
+                   | ("++" | "--")
+                   | ":" <type_decl>
+                   | "=" <arithmetic>
+                   | "(" <arguments> ")"
+
+<array_access_suffix> ::= ("[" <disjunction> "]")* (("++" | "--") | "=" <arithmetic> | ε)
+
+<type_decl> ::= "array" ("[" <disjunction> "]")* ("=" <arithmetic> | ε)
+              | TYPE "=" <arithmetic>
+
+<stmt_func> ::= "func" ID "(" <params> ")" "->" TYPE "{" <stmts> "}"
+
+<params> ::= <param> ("," <param>)* | ε
+<param> ::= ID ":" TYPE ("=" <disjunction> | ε)
+
+<stmt_if> ::= "if" "(" <disjunction> ")" "{" <stmts> "}" <else_clause>
+<else_clause> ::= "else" ( "if" <stmt> | "{" <stmts> "}" ) | ε
+
+<stmt_while> ::= "while" "(" <disjunction> ")" "{" <stmts> "}"
+
+<stmt_return> ::= "return" <disjunction>
+
+<stmt_break> ::= "break"
+
+<stmt_continue> ::= "continue"
+
+<stmt_seq> ::= "seq" "{" <stmts> "}"
+
+<stmt_par> ::= "par" "{" <stmts> "}"
+
+<stmt_c_channel> ::= "c_channel" ID "{" <disjunction> "," <disjunction> "}"
+
+<stmt_s_channel> ::= "s_channel" ID "{" ID "," <disjunction> "," <disjunction> "," <disjunction> "}"
+
+<stmt_for> ::= "for" "(" <stmt> ";" <disjunction> ";" <stmt> ")" "{" <stmts> "}"
+
+<arguments> ::= <disjunction> ("," <disjunction>)* | ε
+
+<disjunction> ::= <conjunction> ("||" <conjunction>)*
+
+<conjunction> ::= <equality> ("&&" <equality>)*
+
+<equality> ::= <comparison> (("==" | "!=") <comparison>)*
+
+<comparison> ::= <arithmetic> (("<" | ">" | "<=" | ">=") <arithmetic>)*
+
+<arithmetic> ::= <term> (("+" | "-") <term>)*
+
+<term> ::= <unary> (("*" | "/") <unary>)*
+
+<unary> ::= ("-" | "!") <unary>
+          | "++" <unary>
+          | "--" <unary>
+          | <primary>
+
+<primary> ::= NUM
+            | STRING
+            | "true"
+            | "false"
+            | ID <primary_suffix>
+            | "(" <disjunction> ")"
+            | "[" <elements> "]"
+
+<primary_suffix> ::= "(" <arguments> ")" | ("[" <disjunction> "]")* (("++" | "--") | ε)
+
+<elements> ::= <disjunction> ("," <disjunction>)* | ε
+
+TYPE ::= "num" | "bool" | "string" | "void" | "array"
+ID ::= [A-Za-z_][A-Za-z0-9_]*
+NUM ::= \d+\.\d+|\.\d+|\d+
+STRING ::= \"[^\"]*\"

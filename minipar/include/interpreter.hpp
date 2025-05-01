@@ -54,6 +54,63 @@ struct ValueWrapper
     }
 };
 
+/// Um “ponteiro” para outro ValueWrapper, para
+/// fazer binding por referência sem copiar o vetor.
+struct ValueWrapperPtr {
+    ValueWrapper *ref;  ///< endereço do ValueWrapper real
+
+    // Construtores
+    ValueWrapperPtr() : ref(nullptr) {}
+    explicit ValueWrapperPtr(ValueWrapper *r) : ref(r) {}
+
+    // Copy (mantém a referência)
+    ValueWrapperPtr(const ValueWrapperPtr &o) : ref(o.ref) {}
+    ValueWrapperPtr &operator=(const ValueWrapperPtr &o) {
+        ref = o.ref;
+        return *this;
+    }
+
+    // Encaminha acesso ao variant interno (sem cópia)
+    std::variant<
+        std::monostate,
+        double,
+        bool,
+        std::string,
+        std::vector<ValueWrapper>
+    > &data() {
+        return ref->data;
+    }
+    const std::variant<
+        std::monostate,
+        double,
+        bool,
+        std::string,
+        std::vector<ValueWrapper>
+    > &data() const {
+        return ref->data;
+    }
+
+    // Encaminha demais métodos existentes em ValueWrapper
+    bool isInitialized() const {
+        return ref->isInitialized();
+    }
+
+    operator std::variant<
+        std::monostate,
+        double,
+        bool,
+        std::string,
+        std::vector<ValueWrapper>
+    >() const {
+        return ref->data;
+    }
+
+    // Se em algum ponto seu interpretador precisar de um ValueWrapper&:
+    operator ValueWrapper&() const {
+        return *ref;
+    }
+};
+
 /**
  * @brief Classe Interpreter.
  *
@@ -70,7 +127,7 @@ private:
      */
     struct Scope
     {
-        std::map<std::string, ValueWrapper> variables; // Mapeamento de variáveis para seus valores.
+        std::map<std::string, std::shared_ptr<ValueWrapper>> variables;// Mapeamento de variáveis para seus valores.
     };
 
     std::vector<Scope> scopes;                  // Pilha de escopos para gerenciar variáveis.

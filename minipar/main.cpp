@@ -27,8 +27,8 @@ int main(int argc, char* argv[]) {
         Parser parser(std::move(tokens));
         auto ast = parser.start();
 
-        SemanticAnalyzer semantic_analyzer;
-        semantic_analyzer.visit(ast.get());
+        // SemanticAnalyzer semantic_analyzer;
+        // semantic_analyzer.visit(ast.get());
 
         Interpreter interpreter;
         interpreter.execute(ast.get());

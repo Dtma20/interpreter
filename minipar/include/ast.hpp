@@ -30,7 +30,19 @@ using Arguments = std::vector<std::unique_ptr<Expression>>;
  * Cada entrada mapeia o nome do parâmetro para um par onde o primeiro elemento é o tipo
  * e o segundo é um ponteiro opcional para o valor padrão (como expressão).
  */
-using Parameters = std::unordered_map<std::string, std::pair<std::string, std::unique_ptr<Expression>>>;
+// em ast.hpp
+// primeiro, typedef para o “info” de cada parâmetro:
+//    first  = tipo (como string)
+//    second = expressão de valor-padrão (nullptr se não houver)
+using ParamInfo  = std::pair<std::string, std::unique_ptr<Expression>>;
+
+// agora, ParamData junta o nome e esse ParamInfo
+using ParamData  = std::pair<std::string, ParamInfo>;
+
+// e o vector ordenado de parâmetros
+using Parameters = std::vector<ParamData>;
+
+
 
 /**
  * @brief Classe base para todos os nós da AST.

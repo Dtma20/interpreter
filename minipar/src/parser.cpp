@@ -701,37 +701,30 @@ std::unique_ptr<Node> Parser::stmtFor()
 }
 
 /**
- * @brief Analisa a lista de parâmetros de uma função.
+ * @brief  Analisa a lista de parâmetros de uma função.
  *
  * Os parâmetros devem estar delimitados por parênteses e separados por vírgulas.
  *
- * @return Parameters Um mapa com os nomes dos parâmetros e seus tipos (e valor padrão, se houver).
+ * @return Parameters Um vetor com os nomes dos parâmetros e seus tipos (e valor padrão, se houver).
  * @throws SyntaxError se a sintaxe dos parâmetros estiver incorreta.
  */
-Parameters Parser::params()
-{
+Parameters Parser::params() {
     Parameters parameters;
-    if (!match("LPAREN"))
-    {
-        throw SyntaxError(lineno, "esperando ( no lugar de " + lookahead.getValue());
+    match("LPAREN");
+    if (lookahead.getValue() != ")") {
+      auto p = param();
+      parameters.push_back(std::move(p));
     }
-    if (lookahead.getValue() != ")")
-    {
-        auto p = param();
-        parameters.insert({std::move(p.first), std::move(p.second)});
+    while (lookahead.getTag() == ",") {
+      match(",");
+      auto p = param();
+      parameters.push_back(std::move(p));
     }
-    while (lookahead.getTag() == ",")
-    {
-        match(",");
-        auto p = param();
-        parameters.insert({std::move(p.first), std::move(p.second)});
-    }
-    if (!match("RPAREN"))
-    {
-        throw SyntaxError(lineno, "esperando ) no lugar de " + lookahead.getValue());
-    }
+    match("RPAREN");
     return parameters;
-}
+  }
+  
+
 
 /**
  * @brief Analisa um parâmetro individual.
