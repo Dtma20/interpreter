@@ -27,19 +27,15 @@ int main(int argc, char* argv[]) {
     }
 
     try {
-        // 1) Lexer → tokens
         Lexer lexer(source_code);
         auto tokens = lexer.scan();
 
-        // 2) Parser → AST
         Parser parser(std::move(tokens));
         auto ast = parser.start();
 
-        // 3) Semantic → checa tipos e declarações
         SemanticAnalyzer semantic;
         semantic.visit(ast.get());
 
-        // 4) Interpreter → executa o programa
         Interpreter interpreter;
         interpreter.execute(ast.get());
 
