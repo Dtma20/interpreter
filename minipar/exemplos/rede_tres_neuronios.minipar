@@ -1,4 +1,4 @@
-epochs: num = 100
+epochs: num = 8000
 learning_rate: num = 0.20
 
 output_biases : array[1] = [randf(-0.5, 0.5)]
@@ -61,8 +61,8 @@ for(j: num = 0; j < 4; j++) {
     output_sum: num = hidden_out0 * output_weights[0][0] + hidden_out1 * output_weights[0][1] + output_biases[0]
     predicted: num = sigmoid(output_sum)
     
-    print("Entrada:")
-    print(data_inputs)
-    print("Saída prevista:")
-    print(predicted)
+    print("Entrada: \n")
+    print(data_inputs, "\n")
+    print("Saída prevista:\n")
+    print(predicted, "\n")
 }

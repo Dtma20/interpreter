@@ -288,7 +288,7 @@ void SemanticAnalyzer::visit_Assign(Assign *node)
                 leftType = vit->second;
                 LOG_DEBUG("SemanticAnalyzer: Found existing var " << name << " of type " << leftType);
 
-                if (leftType == "array<unknown>")
+                if (leftType.find("array") != std::string::npos)
                 {
                     vit->second = rightType;
                     LOG_DEBUG("SemanticAnalyzer: Inferred array type for " << name << ": " << rightType);
