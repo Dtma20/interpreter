@@ -8,19 +8,17 @@ func calc(msg: string) -> string {
     while (index < size) {
         if (isalpha(msg[index])) {
             return "INVALIDO"
-        }
-        else if (msg[index] == " ") {
+        } else if (msg[index] == " ") {
             index = index + 1
             continue
-        }
-        else if (isnum(msg[index])) {
+        } else if (isnum(msg[index])) {
             valor : string = msg[index]
             index = index + 1
             while (index < size && isnum(msg[index])) {
                 valor = valor + msg[index]
                 index = index + 1
             }
-            valor_num : num = to_number(valor)
+            valor_num : num = to_num(valor)
             if (operator == "+") {
                 result = result + valor_num
             }
@@ -36,8 +34,7 @@ func calc(msg: string) -> string {
             else {
                 return "INVALIDO"
             }
-        }
-        else {
+        } else {
             operator = msg[index]
             index = index + 1
         }

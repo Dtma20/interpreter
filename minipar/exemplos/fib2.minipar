@@ -9,4 +9,4 @@ func fib(n: num) -> num {
 }
 
 x: num = fib(6)
-print(x)
+print(x, "\n")

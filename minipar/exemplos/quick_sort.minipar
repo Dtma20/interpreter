@@ -5,7 +5,6 @@ func partition(arr: array, low: num, high: num) -> num {
     for(j: num = low; j < high; j++) {
         if (arr[j] <= pivot) {
             i = i + 1
-
             aux: num = arr[i]
             arr[i] = arr[j]
             arr[j] = aux
@@ -21,16 +20,15 @@ func partition(arr: array, low: num, high: num) -> num {
 
 func quicksort(arr: array, low: num, high: num) -> void {
     if (low < high) {
-        pi = partition(arr, low, high)
+        pi: num = partition(arr, low, high)
         quicksort(arr, low,    pi - 1)
         quicksort(arr, pi + 1, high)
     }
 }
 
-arr: array[5] = [randi(0, 10), randi(0, 10), randi(0, 10), randi(0, 10), randi(0, 10)]
-
+arr: array[8] = [2,4,1,-4,-7,9,10,-20]
 n: num = len(arr)
 
-print("Antes:", arr)
+print("Antes:", arr, "\n")
 quicksort(arr, 0, n - 1)
-print("Depois:", arr)
+print("Depois:", arr, "\n")

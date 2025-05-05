@@ -13,10 +13,12 @@ public:
     std::string evaluate(Node* node) const;
 private:
     // stacks to track variable/function scopes and AST context
-    std::vector<std::unordered_map<std::string, std::string>> scope_stack;
     std::vector<Node*> context_stack;
-    std::unordered_map<std::string, FuncDef*> function_table;
     std::vector<std::string> default_funcs;
+    std::unordered_map<std::string, FuncDef*> function_table;
+    std::unordered_map<std::string, std::string> inferredReturnTypes;
+    std::vector<std::unordered_map<std::string, std::string>> scope_stack;
+
 
     // visit helpers
     void generic_visit(Node* node);

@@ -9,4 +9,4 @@ for(i: num = 1; i < n; i++) {
     b = c
 }
 
-print(c)
+print(c, "\n")

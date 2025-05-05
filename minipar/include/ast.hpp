@@ -42,8 +42,6 @@ using ParamData  = std::pair<std::string, ParamInfo>;
 // e o vector ordenado de parâmetros
 using Parameters = std::vector<ParamData>;
 
-
-
 /**
  * @brief Classe base para todos os nós da AST.
  */
@@ -568,10 +566,20 @@ private:
 class Seq : public Statement
 {
 public:
-    Seq(std::unique_ptr<Body> body, bool is_block = false) : body(std::move(body)), is_block(is_block) {}
+    Seq(std::unique_ptr<Body> body, bool is_block = false) 
+        : body(std::move(body)), is_block(is_block) {}
+
     const Body &getBody() const { return *body; }
-    bool isBlock() const { return is_block; } // Agora inline
-    std::vector<Node *> getAttributes() override { return {}; }
+    bool isBlock() const { return is_block; }
+
+    // Corrigir getAttributes() para retornar os nós do corpo
+    std::vector<Node *> getAttributes() override {
+        std::vector<Node *> attrs;
+        for (const auto &stmt : *body) {
+            attrs.push_back(stmt.get());
+        }
+        return attrs;
+    }
 
 private:
     std::unique_ptr<Body> body;
