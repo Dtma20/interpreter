@@ -39,7 +39,7 @@ func calc(msg: string) -> string {
             index = index + 1
         }
     }
-    return to_string(result)
+    return to_string(result) + "\n"
 }
 
 description : string = "CALCULADORA SIMPLES"

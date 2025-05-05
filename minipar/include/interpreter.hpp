@@ -2,6 +2,7 @@
 #define INTERPRETER_HPP
 
 #include <map>
+#include<mutex>
 #include <string>
 #include <vector>
 #include <memory>
@@ -19,6 +20,7 @@
  * Permite armazenar números (double), booleanos, strings ou vetores de ValueWrapper.
  * Os tipos são definidos na ordem: tipos primitivos primeiro, depois containers.
  */
+static std::mutex cout_mutex;
 struct ValueWrapper
 {
     std::variant<std::monostate, double, bool, std::string, std::vector<ValueWrapper>> data;

@@ -1,14 +1,28 @@
-epochs: num = 8000
+epochs: num = 20000
 learning_rate: num = 0.20
 
-output_biases : array[1] = [randf(-0.5, 0.5)]
-hidden_biases : array[2] = [randf(-0.5, 0.5), randf(-0.5, 0.5)]
+output_biases: array[1] = [randf(-0.5, 0.5)]
+hidden_biases: array[3] = [
+  randf(-0.5, 0.5),
+  randf(-0.5, 0.5),
+  randf(-0.5, 0.5)
+]
 
-data_outputs : array[4] = [0, 1, 1, 0]
-output_weights : array[1][2] = [[randf(-0.5, 0.5), randf(-0.5, 0.5)]]
+data_outputs: array[4] = [0, 1, 1, 0]
 
-hidden_weights : array[2][2] = [[randf(-0.5, 0.5), randf(-0.5, 0.5)], [randf(-0.5, 0.5), randf(-0.5, 0.5)]]
-data_inputs : array[4][2] = [[0, 0], [0, 1], [1, 0], [1, 1]]
+output_weights: array[1][3] = [[
+  randf(-0.5, 0.5),
+  randf(-0.5, 0.5),
+  randf(-0.5, 0.5)
+]]
+
+hidden_weights: array[3][2] = [
+  [randf(-0.5, 0.5), randf(-0.5, 0.5)],
+  [randf(-0.5, 0.5), randf(-0.5, 0.5)],
+  [randf(-0.5, 0.5), randf(-0.5, 0.5)]
+]
+
+data_inputs: array[4][2] = [[0, 0], [0, 1], [1, 0], [1, 1]]
 
 func sigmoid(x: num) -> num {
     return 1 / (1 + exp(-x))
@@ -19,50 +33,69 @@ func dsigmoid(y: num) -> num {
 }
 
 for(i: num = 0; i < epochs; i++) {
-    for(j: num = 0; j < 4; j++) {
-        hidden_sum0: num = data_inputs[j][0] * hidden_weights[0][0] + data_inputs[j][1] * hidden_weights[0][1] + hidden_biases[0]
-        hidden_out0: num = sigmoid(hidden_sum0)
-        hidden_sum1: num = data_inputs[j][0] * hidden_weights[1][0] + data_inputs[j][1] * hidden_weights[1][1] + hidden_biases[1]
-        hidden_out1: num = sigmoid(hidden_sum1)
-        
-        output_sum: num = hidden_out0 * output_weights[0][0] + hidden_out1 * output_weights[0][1] + output_biases[0]
-        predicted: num = sigmoid(output_sum)
-        
-        err: num = data_outputs[j] - predicted
-        delta_output: num = err * dsigmoid(predicted)
-        
-        old_weight0: num = output_weights[0][0]
-        old_weight1: num = output_weights[0][1]
-        
-        output_weights[0][0] = output_weights[0][0] + learning_rate * delta_output * hidden_out0
-        output_weights[0][1] = output_weights[0][1] + learning_rate * delta_output * hidden_out1
-        output_biases[0] = output_biases[0] + learning_rate * delta_output
-        
-        delta_hidden0: num = delta_output * old_weight0 * dsigmoid(hidden_out0)
-        delta_hidden1: num = delta_output * old_weight1 * dsigmoid(hidden_out1)
-        
-        hidden_weights[0][0] = hidden_weights[0][0] + learning_rate * delta_hidden0 * data_inputs[j][0]
-        hidden_weights[0][1] = hidden_weights[0][1] + learning_rate * delta_hidden0 * data_inputs[j][1]
-        hidden_biases[0] = hidden_biases[0] + learning_rate * delta_hidden0
-        
-        hidden_weights[1][0] = hidden_weights[1][0] + learning_rate * delta_hidden1 * data_inputs[j][0]
-        hidden_weights[1][1] = hidden_weights[1][1] + learning_rate * delta_hidden1 * data_inputs[j][1]
-        hidden_biases[1] = hidden_biases[1] + learning_rate * delta_hidden1
-    }
+  for(j: num = 0; j < 4; j++) {
+    # Forward - camada oculta
+    hidden_sum0: num = data_inputs[j][0]*hidden_weights[0][0] + data_inputs[j][1]*hidden_weights[0][1] + hidden_biases[0]
+    out0: num = sigmoid(hidden_sum0)
+
+    hidden_sum1: num = data_inputs[j][0]*hidden_weights[1][0] + data_inputs[j][1]*hidden_weights[1][1] + hidden_biases[1]
+    out1: num = sigmoid(hidden_sum1)
+
+    hidden_sum2: num = data_inputs[j][0]*hidden_weights[2][0] + data_inputs[j][1]*hidden_weights[2][1] + hidden_biases[2]
+    out2: num = sigmoid(hidden_sum2)
+
+    # Forward - saída
+    output_sum: num = out0*output_weights[0][0] + out1*output_weights[0][1] + out2*output_weights[0][2] + output_biases[0]
+    predicted: num = sigmoid(output_sum)
+
+    # Backprop - saída
+    err: num = data_outputs[j] - predicted
+    delta_out: num = err * dsigmoid(predicted)
+
+    old_w0: num = output_weights[0][0]
+    old_w1: num = output_weights[0][1]
+    old_w2: num = output_weights[0][2]
+
+    output_weights[0][0] = output_weights[0][0] + learning_rate * delta_out * out0
+    output_weights[0][1] = output_weights[0][1] + learning_rate * delta_out * out1
+    output_weights[0][2] = output_weights[0][2] + learning_rate * delta_out * out2
+    output_biases[0] = output_biases[0] + learning_rate * delta_out
+
+    # Backprop - ocultos
+    delta_h0: num = delta_out * old_w0 * dsigmoid(out0)
+    delta_h1: num = delta_out * old_w1 * dsigmoid(out1)
+    delta_h2: num = delta_out * old_w2 * dsigmoid(out2)
+
+    hidden_weights[0][0] = hidden_weights[0][0] + learning_rate * delta_h0 * data_inputs[j][0]
+    hidden_weights[0][1] = hidden_weights[0][1] + learning_rate * delta_h0 * data_inputs[j][1]
+    hidden_biases[0] = hidden_biases[0] + learning_rate * delta_h0
+
+    hidden_weights[1][0] = hidden_weights[1][0] + learning_rate * delta_h1 * data_inputs[j][0]
+    hidden_weights[1][1] = hidden_weights[1][1] + learning_rate * delta_h1 * data_inputs[j][1]
+    hidden_biases[1] = hidden_biases[1] + learning_rate * delta_h1
+
+    hidden_weights[2][0] = hidden_weights[2][0] + learning_rate * delta_h2 * data_inputs[j][0]
+    hidden_weights[2][1] = hidden_weights[2][1] + learning_rate * delta_h2 * data_inputs[j][1]
+    hidden_biases[2] = hidden_biases[2] + learning_rate * delta_h2
+  }
 }
 
+# Predição final
 for(j: num = 0; j < 4; j++) {
-    hidden_sum0: num = data_inputs[j][0] * hidden_weights[0][0] + data_inputs[j][1] * hidden_weights[0][1] + hidden_biases[0]
-    hidden_out0: num = sigmoid(hidden_sum0)
-    
-    hidden_sum1: num = data_inputs[j][0] * hidden_weights[1][0] + data_inputs[j][1] * hidden_weights[1][1] + hidden_biases[1]
-    hidden_out1: num = sigmoid(hidden_sum1)
-    
-    output_sum: num = hidden_out0 * output_weights[0][0] + hidden_out1 * output_weights[0][1] + output_biases[0]
-    predicted: num = sigmoid(output_sum)
-    
-    print("Entrada: \n")
-    print(data_inputs, "\n")
-    print("Saída prevista:\n")
-    print(predicted, "\n")
+  hidden_sum0: num = data_inputs[j][0] * hidden_weights[0][0] + data_inputs[j][1] * hidden_weights[0][1] + hidden_biases[0]
+  out0: num = sigmoid(hidden_sum0)
+
+  hidden_sum1: num = data_inputs[j][0] * hidden_weights[1][0] + data_inputs[j][1] * hidden_weights[1][1] + hidden_biases[1]
+  out1: num = sigmoid(hidden_sum1)
+
+  hidden_sum2: num = data_inputs[j][0] * hidden_weights[2][0] + data_inputs[j][1] * hidden_weights[2][1] + hidden_biases[2]
+  out2: num = sigmoid(hidden_sum2)
+
+  output_sum: num = out0 * output_weights[0][0] + out1 * output_weights[0][1] + out2 * output_weights[0][2] + output_biases[0]
+  predicted: num = sigmoid(output_sum)
+
+  print("Input: ")
+  print(data_inputs[j], ", ")
+  print("Predicted Output: ")
+  print(predicted, "\n")
 }

@@ -383,6 +383,7 @@ ValueWrapper Interpreter::evaluateFunctionCall(Call *call)
     LOG_DEBUG("Interpreter: Avaliando chamada de função: " << func_name);
     if (func_name == "print")
     {
+        std::ostringstream oss;
         for (const auto &arg : call->getArgs())
         {
             if (!arg)
@@ -392,32 +393,39 @@ ValueWrapper Interpreter::evaluateFunctionCall(Call *call)
             }
             ValueWrapper value = evaluate(arg.get());
             LOG_DEBUG("Interpreter: Argumento para print: " << convert_value_to_string(value));
-            std::visit([](auto &&val)
+
+            std::visit([&oss](auto &&val)
                        {
                 using T = std::decay_t<decltype(val)>;
                 if constexpr (std::is_same_v<T, std::monostate>) {
-                    std::cout << "[uninitialized]";
+                    oss << "[uninitialized]";
                 }
                 else if constexpr (std::is_same_v<T, double>) {
-                    std::cout << val;
+                    oss << val;
                 }
                 else if constexpr (std::is_same_v<T, bool>) {
-                    std::cout << (val ? "true" : "false");
+                    oss << (val ? "true" : "false");
                 }
                 else if constexpr (std::is_same_v<T, std::string>) {
-                    std::cout << val;
+                    oss << val;
                 }
                 else if constexpr (std::is_same_v<T, std::vector<ValueWrapper>>) {
-                    std::cout << "[";
+                    oss << "[";
                     bool first = true;
                     for (const auto &elem : val) {
-                        if (!first) std::cout << ", ";
-                        std::cout << elem;
+                        if (!first) oss << ", ";
+                        oss << elem;
                         first = false;
                     }
-                    std::cout << "]";
+                    oss << "]";
                 } }, value.data);
         }
+
+        {
+            std::lock_guard<std::mutex> lk(cout_mutex);
+            std::cout << oss.str() << std::flush;
+        }
+
         LOG_DEBUG("Interpreter: print concluído, retornando string vazia");
         return ValueWrapper(std::string(""));
     }
@@ -1406,17 +1414,27 @@ void Interpreter::execute_stmt(Node *stmt)
         continue_flag = true;
     }
     // 10) PAR
-    else if (auto *par = dynamic_cast<Par *>(stmt))
-    {
+    else if (auto *par = dynamic_cast<Par *>(stmt)) {
+        const auto& body = par->getBody();
         std::vector<std::thread> threads;
-        for (auto &st : par->getBody())
-        {
-            threads.emplace_back([this, &st]()
-                                 { execute_stmt(st.get()); });
+        threads.reserve(body.size());
+    
+        static std::mutex cout_mutex;
+    
+        for (const auto& uptr : body) {
+            threads.emplace_back([this, ptr = uptr.get()]() {
+                execute_stmt(ptr);
+                std::lock_guard<std::mutex> lk(cout_mutex);
+            });
         }
-        for (auto &t : threads)
-            t.join();
+    
+        for (auto& t : threads) {
+            if (t.joinable())
+                t.join();
+        }
     }
+    
+    
     // 11) SEQ
     else if (auto *seq = dynamic_cast<Seq *>(stmt))
     {

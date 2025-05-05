@@ -7,6 +7,11 @@
 #include "./include/error.hpp"
 
 int main(int argc, char* argv[]) {
+    
+    std::ios_base::sync_with_stdio(false);
+    std::cin.tie(NULL);
+    std::cout.tie(NULL);
+
     std::string source_code;
     if (argc > 1) {
         std::ifstream file(argv[1]);
