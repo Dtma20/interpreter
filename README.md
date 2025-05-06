@@ -8,41 +8,53 @@ Minipar é uma linguagem de programação minimalista desenvolvida para oferecer
 
 A organização dos arquivos do Minipar segue uma estrutura clara e modular, facilitando a manutenção e a expansão:
 
-- **build/**  
-  Contém o *Makefile*, que automatiza o processo de compilação.
-  
-- **include/**  
-  Arquivos de cabeçalho (`.hpp`) com as definições de classes e interfaces, incluindo:
-  - `ast.hpp`
-  - `debug.hpp`
-  - `error.hpp`
-  - `interpreter.hpp`
-  - `lexer.hpp`
-  - `parser.hpp`
-  - `semantic.hpp`
-  - `symtable.hpp`
-  - `token.hpp`
-  
-- **src/**  
-  Implementações em C++ correspondentes aos arquivos de cabeçalho:
-  - `ast.cpp`
-  - `error.cpp`
-  - `interpreter.cpp`
-  - `lexer.cpp`
-  - `parser.cpp`
-  - `semantic.cpp`
-  - `token.cpp`
-  
-- **exemplos/**  
-  Exemplos de programas escritos em Minipar, que demonstram diversas funcionalidades da linguagem:
-  - `fib.minipar` (Fibonacci Iterativo)
-  - `fib2.minipar` (Fibonacci Recursivo)
-  - `mochila.minipar` (Problema da Mochila Binária)
-  - `nn.minipar` (Treinamento de Neurônio)
-  - `server.minipar` (Calculadora via Canal)
-  
-- **main.cpp**  
-  Arquivo principal que integra os componentes e inicia o interpretador.
+```
+├── exemplos
+│   ├── bubble_sort.minipar
+│   ├── client.minipar
+│   ├── fat.minipar
+│   ├── fat_rec.minipar
+│   ├── fib.minipar
+│   ├── fib2.minipar
+│   ├── mochila.minipar
+│   ├── par.minipar
+│   ├── quick_sort.minipar
+│   ├── recomendacao.minipar
+│   ├── rede_tres_neuronios.minipar
+│   ├── rede_um_neuronio.minipar
+│   └── server.minipar
+├── gramatica
+│   └── bnf.txt
+├── include
+│   ├── ast.hpp
+│   ├── debug.hpp
+│   ├── error.hpp
+│   ├── interpreter.hpp
+│   ├── lexer.hpp
+│   ├── parser.hpp
+│   ├── semantic.hpp
+│   ├── symtable.hpp
+│   └── token.hpp
+├── main.cpp
+├── makefile
+├── minipar
+├── minipar-extension
+│   ├── language-configuration.json
+│   ├── minipar-extension-0.0.1.vsix
+│   ├── package.json
+│   ├── syntaxes
+│   │   └── minipar.tmLanguage.json
+│   └── themes
+│       └── minipar-theme.json
+└── src
+    ├── ast.cpp
+    ├── error.cpp
+    ├── interpreter.cpp
+    ├── lexer.cpp
+    ├── parser.cpp
+    ├── semantic.cpp
+    └── token.cpp
+```
 
 ---
 
@@ -50,212 +62,116 @@ A organização dos arquivos do Minipar segue uma estrutura clara e modular, fac
 
 Para compilar e executar programas escritos em Minipar, siga os passos abaixo:
 
-1. **Pré-requisitos:**  
-   - Compilador C++ com suporte a C++17 (por exemplo, `g++`).
-   - Biblioteca padrão do C++ instalada.
+1. **Pré-requisitos:**
 
-2. **Compilação:**  
-   No diretório `build/`, utilize o *Makefile*:
-   - **Compilação padrão:**  
+   * Compilador C++ com suporte a C++17 (por exemplo, `g++`).
+   * Biblioteca padrão do C++ instalada.
+
+2. **Compilação:**
+   No diretório raiz do projeto, utilize o `makefile`:
+
+   * **Compilação padrão:**
+
      ```bash
      make run
-     ```  
-     Esse comando gera o executável `programa` usando:
-     ```bash
-     g++ -g -o programa ../main.cpp ../src/lexer.cpp ../src/parser.cpp ../src/semantic.cpp ../src/token.cpp ../src/error.cpp ../src/ast.cpp ../src/interpreter.cpp -std=c++17 -fPIC
-     ```
-   - **Modo de Depuração:**  
-     ```bash
-     make debug
-     ```  
-     Adiciona a flag `-DDEBUG_MODE` para logs detalhados:
-     ```bash
-     g++ -DDEBUG_MODE -g -o programa ../main.cpp ../src/lexer.cpp ../src/parser.cpp ../src/semantic.cpp ../src/token.cpp ../src/error.cpp ../src/ast.cpp ../src/interpreter.cpp -std=c++17 -fPIC
      ```
 
-3. **Execução:**  
-   Execute o interpretador passando um arquivo fonte como argumento:
+     Esse comando gera o executável `minipar` usando:
+
+     ```bash
+     g++ -g -o minipar main.cpp src/lexer.cpp src/parser.cpp src/semantic.cpp src/token.cpp src/error.cpp src/ast.cpp src/interpreter.cpp -std=c++17 -fPIC
+     ```
+   * **Modo de Depuração:**
+
+     ```bash
+     make debug
+     ```
+
+     Adiciona a flag `-DDEBUG_MODE` para logs detalhados:
+
+     ```bash
+     g++ -DDEBUG_MODE -g -o minipar main.cpp src/lexer.cpp src/parser.cpp src/semantic.cpp src/token.cpp src/error.cpp src/ast.cpp src/interpreter.cpp -std=c++17 -fPIC
+     ```
+
+3. **Execução:**
+   Após compilar, execute o interpretador apontando para um exemplo na pasta `exemplos/`:
+
    ```bash
-   ./build/programa exemplos/fib.minipar
+   ./minipar exemplos/fib.minipar
    ```
+
    O interpretador processará o código, exibindo a saída ou mensagens de erro no console.
 
 ---
 
-## Exemplos de Programas
+## Funcionalidades Principais
 
-Os exemplos incluídos demonstram diversas funcionalidades do Minipar:
+Minipar oferece um conjunto rico de recursos para facilitar o desenvolvimento de algoritmos e provas de conceito em diferentes paradigmas:
 
-1. **Problema da Mochila Binária (`exemplos/mochila.minipar`):**  
-   Utiliza arrays, laços `for` e funções para resolver o problema via programação dinâmica.  
-   - **Saída:** `15`
+* **Tipos de Dados Básicos**
 
-2. **Fibonacci Iterativo (`exemplos/fib.minipar`):**  
-   Calcula a sequência de Fibonacci de forma iterativa.  
-   - **Saída:** `8` (Sequência: 0, 1, 1, 2, 3, 5, 8)
+  * `num`: números reais com operações aritméticas e comparações.
+  * `string`: manipulação, concatenação e funções auxiliares (`to_string`, `len`).
+  * `bool`: operações lógicas (`&&`, `||`, `!`).
 
-3. **Treinamento de Neurônio (`exemplos/nn.minipar`):**  
-   Implementa um perceptron simples com ajuste de pesos.  
-   - **Saída parcial:** Exibe iterações com ajustes até o treinamento ser concluído.
+* **Arrays**
 
-4. **Calculadora via Canal (`exemplos/server.minipar`):**  
-   Cria um servidor que processa expressões enviadas por um cliente.  
-   - **Saída:** Inicializa um servidor que responde a expressões como `"2 + 3"`.
+  * Declaração estática e inicialização: `arr : array[5] = [1, 2, 3, 4, 5]`.
+  * Acesso e atribuição por índice, função `len` e suporte a arrays multidimensionais (`array[N][M]`).
 
-5. **Fibonacci Recursivo (`exemplos/fib2.minipar`):**  
-   Utiliza recursão para calcular a sequência de Fibonacci.  
-   - **Saída:** `8`
+* **Controle de Fluxo**
 
----
+  * Condicionais: `if … else`.
+  * Laços: `while` e `for`, com suporte a `break` e `continue`.
 
-## Manual de Referência da Linguagem
+* **Funções e Escopo**
 
-### 1. Convenções Léxicas
+  * Declaração de funções com `func nome(args) { … }` e `return`.
+  * Escopo léxico e passagem de parâmetros por valor ou referência.
 
-- **Identificadores:**  
-  Iniciam com letras ou `_`, seguidos por letras, números ou `_` (ex.: `x`, `minha_variavel`).
+* **Paralelismo e Sequenciamento**
 
-- **Palavras-chave:**  
-  `func`, `if`, `while`, `return`, `break`, `continue`, `par`, `seq`, `c_channel`, `s_channel`, `for`, entre outras.
+  * `par` para executar blocos em threads paralelas.
+  * `seq` para forçar execução sequencial.
 
-- **Comentários:**  
-  - Linha única: `# comentário`
-  - Multi-linha: `/* comentário */`
+* **Comunicação via Canais TCP**
 
-- **Espaços e Quebras de Linha:**  
-  Geralmente ignorados, exceto para delimitar tokens.
+  * Cliente (`c_channel`) e servidor (`s_channel`) para troca de mensagens bidirecionais.
+  * Métodos nativos: `send`, `recv`, `close`.
 
----
+* **Funções Matemáticas e Probabilísticas**
 
-### 2. Tipos de Dados
+  * `exp(x)`, `randf(a, b)`, `randi(a, b)`.
 
-Minipar suporta os seguintes tipos:
-- **num:** Números reais (ex.: `5`, `3.14`).
-- **string:** Cadeias de caracteres delimitadas por aspas (ex.: `"hello"`).
-- **bool:** Valores booleanos (`true`, `false`).
-- **void:** Tipo de retorno para funções sem valor retornado.
-- **array:** Coleções ordenadas de elementos do mesmo tipo (ex.: `x: array[10]`).
+* **Definição de Funções de Alto Nível**
+
+  * Suporte a funções personalizadas como `sigmoid` e `dsigmoid`.
+
+* **Algoritmos Clássicos e Exemplos Avançados**
+
+  * Ordenação: `bubble_sort.minipar`, `quick_sort.minipar`.
+  * Programação Dinâmica: `mochila.minipar`.
+  * Recursão: `fib.minipar`, `fib2.minipar`, `fat.minipar`, `fat_rec.minipar`.
+  * Redes Neurais: `rede_um_neuronio.minipar`, `rede_tres_neuronios.minipar`.
 
 ---
 
-### 3. Estruturas e Comandos
+## Exemplos de Programas Disponíveis
 
-#### Declaração de Variáveis e Funções
+Veja na pasta `exemplos/` diversos casos de uso:
 
-```go
-x : num = 42
-str : string = "texto"
-arr : array[5] = [1, 2, 3, 4, 5]
-```
-
-#### Operações com Arrays
-
-Arrays permitem acesso e manipulação de elementos via índices:
-```go
-arr : array[5] = [1, 2, 3, 4, 5]
-print(arr[2])  # Exibe 3
-arr[2] = 10    # Altera o elemento no índice 2 para 10
-```
-
-#### Estruturas de Controle
-
-- **Condicionais (`if/else`):**
-  ```go
-  if (x > 0) {
-      print("positivo")
-  } else {
-      print("negativo ou zero")
-  }
-  ```
-
-- **Laços:**
-  - **While:** Para repetições com condição.
-  - **For:** Para iterações com contadores.
-
-- **Comandos de Controle de Fluxo:**  
-  `break` e `continue` manipulam iterações.
-
-#### Estruturas de Paralelismo e Sequenciamento
-
-- **Paralelismo (`par`):** Executa instruções em threads separadas.
-  ```go
-  par {
-      print("tarefa 1")
-      print("tarefa 2")
-  }
-  ```
-
-- **Sequenciamento Explícito (`seq`):** Executa instruções em ordem.
-  ```go
-  seq {
-      print("passo 1")
-      print("passo 2")
-  }
-  ```
-
-#### Comunicação via Canais
-
-- **CChannel (Cliente):**
-  ```go
-  c_channel meu_canal { "localhost", 8080 }
-  ```
-- **SChannel (Servidor):**
-  Veja exemplo em `exemplos/server.minipar`.
-
-- **Exemplo de Uso:**
-  - **Servidor:**
-    ```go
-    s_channel servidor { 8080 }
-    print("Aguardando conexão...")
-    # Processa mensagens recebidas
-    ```
-  - **Cliente:**
-    ```go
-    c_channel cliente { "localhost", 8080 }
-    cliente.send("2 + 3")
-    ```
-  *Nota:* Canais utilizam sockets TCP para comunicação.
+1. **Ordenação e Estruturas de Dados:** `bubble_sort`, `quick_sort`, `mochila`
+2. **Sequências Numéricas:** `fib`, `fib2`, `fat`, `fat_rec`
+3. **Paralelismo:** `par`
+4. **Comunicação Cliente-Servidor:** `client`, `server`
+5. **Sistema de Recomendação Simples:** `recomendacao`
+6. **Redes Neurais:** `rede_um_neuronio`, `rede_tres_neuronios`
 
 ---
 
-### 4. Expressões e Operadores
+## Manual de Referência (Resumo)
 
-#### Operadores Aritméticos
-`+`, `-`, `*`, `/`
-
-#### Operadores Relacionais
-`<`, `>`, `<=`, `>=`, `==`, `!=`
-
-#### Operadores Lógicos
-`&&` (AND), `||` (OR), `!` (NOT)
-
-#### Operadores Unários
-- `++`: Incrementa em 1 (ex.: `x++`).
-- `--`: Decrementa em 1 (ex.: `x--`).
-- `!`: Nega valor booleano (ex.: `!true` → `false`).
-- `-`: Nega valor numérico (ex.: `-5`).
-
-#### Ordem de Precedência
-1. Unários: `!`, `-`, `++`, `--`
-2. `*`, `/`
-3. `+`, `-`
-4. `<`, `>`, `<=`, `>=`
-5. `==`, `!=`
-6. `&&`, `||`
-7. Parênteses alteram precedência.
-
----
-
-### 5. Biblioteca Padrão
-
-- **Entrada e Saída:**  
-  - `print(valor)`: Exibe o valor no console.
-
-- **Conversão de Tipos:**  
-  - `to_num(str)`: Converte string em número (ex.: `"42" → 42`).
-  - `to_string(valor)`: Converte valor em string.
-
-- **Manipulação de Strings e Arrays:**  
-  - `len(valor)`: Retorna tamanho de string ou array.
-  - `isalpha(str)`: Verifica se contém apenas letras.
-  - `isnum(str)`: Verifica se é um número válido.
+**Lexical:** identificadores, palavras-chave, comentários.
+**Tipos:** num, string, bool, void, array.
+**Operadores:** aritméticos, relacionais, lógicos, unários e precedência.
+**Estruturas:** condicionais, laços, funções, `par`, `seq`, canais.
