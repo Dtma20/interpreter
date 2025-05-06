@@ -1,0 +1,68 @@
+{
+    "name": "Minipar",
+    "scopeName": "source.minipar",
+    "fileTypes": ["minipar"],
+    "patterns": [
+      { "include": "#keywords" },
+      { "include": "#types" },
+      { "include": "#strings" },
+      { "include": "#numbers" },
+      { "include": "#comments" },
+      { "include": "#functions" },
+      { "include": "#variables" },
+      { "include": "#operators" }
+    ],
+    "repository": {
+      "keywords": {
+        "patterns": [
+          {
+            "name": "keyword.control.minipar",
+            "match": "\\b(func|if|else|while|for|return|par|print|s_channel)\\b"
+          }
+        ]
+      },
+      "types": {
+        "patterns": [
+          {
+            "name": "storage.type.minipar",
+            "match": "\\b(num|string|array)\\b"
+          }
+        ]
+      },
+      "strings": {
+        "name": "string.quoted.double.minipar",
+        "begin": "\"",
+        "end": "\"",
+        "patterns": [
+          {
+            "name": "constant.character.escape.minipar",
+            "match": "\\\\."
+          }
+        ]
+      },
+      "numbers": {
+        "name": "constant.numeric.minipar",
+        "match": "\\b\\d+(\\.\\d+)?\\b"
+      },
+      "comments": {
+        "name": "comment.line.minipar",
+        "match": "#.*$"
+      },
+      "functions": {
+        "patterns": [
+          {
+            "name": "entity.name.function.minipar",
+            "match": "\\b[a-zA-Z_][a-zA-Z0-9_]*(?=\\s*\\()"
+          }
+        ]
+      },
+      "variables": {
+        "name": "variable.minipar",
+        "match": "\\b[a-zA-Z_][a-zA-Z0-9_]*\\b(?![\\s]*\\()"
+      },
+      "operators": {
+        "name": "keyword.operator.minipar",
+        "match": "[+\\-*/=<>!]+"
+      }
+    }
+  }

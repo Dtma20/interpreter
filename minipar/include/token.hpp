@@ -12,7 +12,8 @@
  *
  * Um token contém uma etiqueta (tag) que indica sua categoria e um valor associado.
  */
-class Token {
+class Token
+{
 public:
     /**
      * @brief Construtor padrão que inicializa um token vazio.
@@ -24,7 +25,7 @@ public:
      * @param tag Categoria do token (por exemplo, "IDENTIFIER", "NUMBER").
      * @param value Valor associado ao token.
      */
-    Token(const std::string& tag, const std::string& value);
+    Token(const std::string &tag, const std::string &value);
 
     /**
      * @brief Obtém a categoria (tag) do token.

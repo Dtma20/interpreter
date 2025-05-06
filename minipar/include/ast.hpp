@@ -30,19 +30,30 @@ using Arguments = std::vector<std::unique_ptr<Expression>>;
  * Cada entrada mapeia o nome do parâmetro para um par onde o primeiro elemento é o tipo
  * e o segundo é um ponteiro opcional para o valor padrão (como expressão).
  */
-using Parameters = std::unordered_map<std::string, std::pair<std::string, std::unique_ptr<Expression>>>;
+// em ast.hpp
+// primeiro, typedef para o “info” de cada parâmetro:
+//    first  = tipo (como string)
+//    second = expressão de valor-padrão (nullptr se não houver)
+using ParamInfo  = std::pair<std::string, std::unique_ptr<Expression>>;
+
+// agora, ParamData junta o nome e esse ParamInfo
+using ParamData  = std::pair<std::string, ParamInfo>;
+
+// e o vector ordenado de parâmetros
+using Parameters = std::vector<ParamData>;
 
 /**
  * @brief Classe base para todos os nós da AST.
  */
-class Node {
+class Node
+{
 public:
     virtual ~Node() = default;
     /**
      * @brief Retorna os atributos filhos deste nó.
      * @return Vetor de ponteiros para os nós atributos.
      */
-    virtual std::vector<Node*> getAttributes() = 0;
+    virtual std::vector<Node *> getAttributes() = 0;
 };
 
 /**
@@ -50,14 +61,16 @@ public:
  *
  * Contém informações comuns, como o tipo da expressão e o token associado.
  */
-class Expression : public Node {
+class Expression : public Node
+{
 public:
     /**
      * @brief Construtor para uma expressão.
      * @param type Tipo da expressão.
      * @param token Token associado à expressão.
      */
-    Expression(const std::string& type, const Token& token);
+    Expression() = default;
+    Expression(const std::string &type, const Token &token);
     virtual ~Expression() = default;
 
     /**
@@ -79,14 +92,15 @@ public:
     std::string getName() const;
 
 protected:
-    std::string type; ///< Tipo da expressão.
-    Token token;      ///< Token associado à expressão.
+    std::string type; // Tipo da expressão.
+    Token token;      // Token associado à expressão.
 };
 
 /**
  * @brief Classe base para instruções na AST.
  */
-class Statement : public Node {
+class Statement : public Node
+{
 public:
     virtual ~Statement() = default;
 };
@@ -94,21 +108,23 @@ public:
 /**
  * @brief Representa uma constante literal na AST.
  */
-class Constant : public Expression {
+class Constant : public Expression
+{
 public:
     /**
      * @brief Construtor para uma constante.
      * @param type Tipo da constante.
      * @param token Token contendo o valor da constante.
      */
-    Constant(const std::string& type, const Token& token);
-    std::vector<Node*> getAttributes() override { return {}; }
+    Constant(const std::string &type, const Token &token);
+    std::vector<Node *> getAttributes() override { return {}; }
 };
 
 /**
  * @brief Representa um identificador (variável) na AST.
  */
-class ID : public Expression {
+class ID : public Expression
+{
 public:
     /**
      * @brief Construtor para um identificador.
@@ -116,55 +132,36 @@ public:
      * @param token Token representando o identificador.
      * @param decl Flag que indica se o identificador é uma declaração.
      */
-    ID(const std::string& type, const Token& token, bool decl = false);
+    ID(const std::string &type, const Token &token, bool decl = false);
 
     /**
      * @brief Indica se o identificador é uma declaração.
      * @return true se for declaração, false caso contrário.
      */
     bool isDecl() const;
-    std::vector<Node*> getAttributes() override { return {}; }
+    std::vector<Node *> getAttributes() override { return {}; }
 
 private:
-    bool decl; ///< Indica se o identificador é uma declaração.
+    bool decl; // Indica se o identificador é uma declaração.
 };
 
-/**
- * @brief Representa um acesso a elemento (por exemplo, indexação em array ou string) na AST.
- */
-class Access : public Expression {
+class Access : public Expression
+{
 public:
-    /**
-     * @brief Construtor para um acesso.
-     * @param type Tipo da expressão de acesso.
-     * @param token Token associado ao acesso.
-     * @param id Ponteiro único para o identificador base.
-     * @param expr Ponteiro único para a expressão que indica o índice.
-     */
-    Access(const std::string& type, const Token& token, std::unique_ptr<ID> id, std::unique_ptr<Expression> expr);
-
-    /**
-     * @brief Obtém o identificador base do acesso.
-     * @return Ponteiro para o ID.
-     */
-    ID* getId() const;
-
-    /**
-     * @brief Obtém a expressão de índice do acesso.
-     * @return Ponteiro para a expressão.
-     */
-    Expression* getExpr() const;
-    std::vector<Node*> getAttributes() override { return {}; }
-
+    Access(const std::string &type, const Token &token, std::unique_ptr<Expression> base, std::unique_ptr<Expression> index);
+    Expression *getBase() const;  // Alterado de getId para refletir o novo tipo
+    Expression *getIndex() const; // Alterado de getExpr para maior clareza
+    std::vector<Node *> getAttributes() override { return {}; }
 private:
-    std::unique_ptr<ID> id;           ///< Identificador base.
-    std::unique_ptr<Expression> expr; ///< Expressão de índice.
+    std::unique_ptr<Expression> base;  // Alterado de std::unique_ptr<ID>
+    std::unique_ptr<Expression> index; // Renomeado de expr
 };
 
 /**
  * @brief Representa uma operação lógica (ex.: AND, OR) na AST.
  */
-class Logical : public Expression {
+class Logical : public Expression
+{
 public:
     /**
      * @brief Construtor para uma operação lógica.
@@ -173,30 +170,31 @@ public:
      * @param left Ponteiro único para o operando à esquerda.
      * @param right Ponteiro único para o operando à direita.
      */
-    Logical(const std::string& type, const Token& token, std::unique_ptr<Expression> left, std::unique_ptr<Expression> right);
+    Logical(const std::string &type, const Token &token, std::unique_ptr<Expression> left, std::unique_ptr<Expression> right);
 
     /**
      * @brief Obtém o operando à esquerda.
      * @return Ponteiro para a expressão à esquerda.
      */
-    Expression* getLeft() const;
+    Expression *getLeft() const;
 
     /**
      * @brief Obtém o operando à direita.
      * @return Ponteiro para a expressão à direita.
      */
-    Expression* getRight() const;
-    std::vector<Node*> getAttributes() override { return {}; }
+    Expression *getRight() const;
+    std::vector<Node *> getAttributes() override { return {}; }
 
 private:
-    std::unique_ptr<Expression> left;  ///< Operando esquerdo.
-    std::unique_ptr<Expression> right; ///< Operando direito.
+    std::unique_ptr<Expression> left;  // Operando esquerdo.
+    std::unique_ptr<Expression> right; // Operando direito.
 };
 
 /**
  * @brief Representa uma operação relacional (ex.: ==, !=, <, >) na AST.
  */
-class Relational : public Expression {
+class Relational : public Expression
+{
 public:
     /**
      * @brief Construtor para uma operação relacional.
@@ -205,30 +203,31 @@ public:
      * @param left Ponteiro único para o operando à esquerda.
      * @param right Ponteiro único para o operando à direita.
      */
-    Relational(const std::string& type, const Token& token, std::unique_ptr<Expression> left, std::unique_ptr<Expression> right);
+    Relational(const std::string &type, const Token &token, std::unique_ptr<Expression> left, std::unique_ptr<Expression> right);
 
     /**
      * @brief Obtém o operando à esquerda.
      * @return Ponteiro para a expressão à esquerda.
      */
-    Expression* getLeft() const;
+    Expression *getLeft() const;
 
     /**
      * @brief Obtém o operando à direita.
      * @return Ponteiro para a expressão à direita.
      */
-    Expression* getRight() const;
-    std::vector<Node*> getAttributes() override { return {}; }
+    Expression *getRight() const;
+    std::vector<Node *> getAttributes() override { return {}; }
 
 private:
-    std::unique_ptr<Expression> left;  ///< Operando esquerdo.
-    std::unique_ptr<Expression> right; ///< Operando direito.
+    std::unique_ptr<Expression> left;  // Operando esquerdo.
+    std::unique_ptr<Expression> right; // Operando direito.
 };
 
 /**
  * @brief Representa uma operação aritmética (ex.: +, -, *, /) na AST.
  */
-class Arithmetic : public Expression {
+class Arithmetic : public Expression
+{
 public:
     /**
      * @brief Construtor para uma operação aritmética.
@@ -237,152 +236,146 @@ public:
      * @param left Ponteiro único para o operando à esquerda.
      * @param right Ponteiro único para o operando à direita.
      */
-    Arithmetic(const std::string& type, const Token& token, std::unique_ptr<Expression> left, std::unique_ptr<Expression> right);
+    Arithmetic(const std::string &type, const Token &token, std::unique_ptr<Expression> left, std::unique_ptr<Expression> right);
 
     /**
      * @brief Obtém o operando à esquerda.
      * @return Ponteiro para a expressão à esquerda.
      */
-    Expression* getLeft() const;
+    Expression *getLeft() const;
 
     /**
      * @brief Obtém o operando à direita.
      * @return Ponteiro para a expressão à direita.
      */
-    Expression* getRight() const;
-    std::vector<Node*> getAttributes() override { return {}; }
+    Expression *getRight() const;
+    std::vector<Node *> getAttributes() override { return {}; }
 
 private:
-    std::unique_ptr<Expression> left;  ///< Operando esquerdo.
-    std::unique_ptr<Expression> right; ///< Operando direito.
+    std::unique_ptr<Expression> left;  // Operando esquerdo.
+    std::unique_ptr<Expression> right; // Operando direito.
 };
 
 /**
  * @brief Representa uma operação unária (ex.: -, !) na AST.
  */
-class Unary : public Expression {
+/**
+ * @brief Representa uma operação unária (ex.: -, !) na AST.
+ */
+class Unary : public Expression
+{
 public:
     /**
      * @brief Construtor para uma operação unária.
      * @param type Tipo da operação.
      * @param token Token representando o operador unário.
      * @param expr Ponteiro único para o operando.
+     * @param isPostfix Indica se o operador é pós-fixado (true para x++ ou x--; false para ++x, --x, -, !).
      */
-    Unary(const std::string& type, const Token& token, std::unique_ptr<Expression> expr);
+    Unary(const std::string &type, const Token &token, std::unique_ptr<Expression> expr, bool isPostfix = false);
 
     /**
      * @brief Obtém o operando da operação unária.
      * @return Ponteiro para a expressão.
      */
-    Expression* getExpr() const;
-    std::vector<Node*> getAttributes() override { return {}; }
+    Expression *getExpr() const;
+
+    /**
+     * @brief Verifica se o operador é pós-fixado.
+     * @return true se o operador é pós-fixado (ex.: x++ ou x--); false caso contrário.
+     */
+    bool isPostfix() const;
+
+    std::vector<Node *> getAttributes() override { return {}; }
 
 private:
-    std::unique_ptr<Expression> expr; ///< Operando.
+    std::unique_ptr<Expression> expr; // Operando.
+    bool m_isPostfix;                 // Indica se o operador é pós-fixado.
 };
 
 /**
  * @brief Representa uma chamada de função na AST.
  */
-class Call : public Expression {
+class Call : public Expression
+{
 public:
-    /**
-     * @brief Construtor para uma chamada de função.
-     * @param type Tipo da chamada.
-     * @param token Token representando a chamada.
-     * @param id Ponteiro único para o identificador da função.
-     * @param args Lista de argumentos passados para a função.
-     * @param oper Operador ou nome associado à chamada.
-     */
-    Call(const std::string& type, const Token& token, std::unique_ptr<ID> id, Arguments args, const std::string& oper);
-
-    /**
-     * @brief Obtém o identificador da função chamada.
-     * @return Ponteiro para o ID.
-     */
-    ID* getId() const;
-
-    /**
-     * @brief Obtém os argumentos da chamada de função.
-     * @return Referência constante para a lista de argumentos.
-     */
-    const Arguments& getArgs() const;
-
-    /**
-     * @brief Obtém o operador ou nome associado à chamada.
-     * @return Operador ou nome como string.
-     */
+    Call(const std::string &type, const Token &token, std::unique_ptr<Expression> base, Arguments args, const std::string &oper);
+    Expression *getBase() const; // Alterado de getId
+    const Arguments &getArgs() const;
     std::string getOper() const;
-    std::vector<Node*> getAttributes() override { return {}; }
-
+    std::vector<Node *> getAttributes() override { return {}; }
 private:
-    std::unique_ptr<ID> id; ///< Identificador da função.
-    Arguments args;         ///< Lista de argumentos.
-    std::string oper;       ///< Operador ou nome.
+    std::unique_ptr<Expression> base; // Alterado de std::unique_ptr<ID>
+    Arguments args;                   // Lista de argumentos.
+    std::string oper;                 // Operador ou nome.
 };
 
 // ======================================================================
 // Subclasses de Statement
 // ======================================================================
 
-/**
- * @brief Representa o módulo, ou nó raiz, da AST.
- *
- * Contém um corpo (Body) composto por uma lista de statements.
- */
-class Module : public Statement {
+class Module : public Statement
+{
 public:
-    /**
-     * @brief Construtor para um módulo.
-     * @param stmts Ponteiro único para o corpo do módulo.
-     */
-    Module(std::unique_ptr<Body> stmts);
-
-    /**
-     * @brief Obtém os statements do módulo.
-     * @return Referência constante para o corpo.
-     */
-    const Body& getStmts() const;
-    std::vector<Node*> getAttributes() override { return {}; }
+    Module(std::unique_ptr<Node> stmt) : stmt(std::move(stmt)) {}
+    Node *getStmt() const { return stmt.get(); }
+    std::vector<Node *> getAttributes() override { return {stmt.get()}; }
 
 private:
-    std::unique_ptr<Body> stmts; ///< Corpo do módulo.
+    std::unique_ptr<Node> stmt;
 };
 
-/**
- * @brief Representa uma instrução de atribuição.
- */
-class Assign : public Statement {
+class Assign : public Statement
+{
 public:
     /**
      * @brief Construtor para uma atribuição.
      * @param left Ponteiro único para a expressão do lado esquerdo.
      * @param right Ponteiro único para a expressão do lado direito.
+     * @param isDecl Indica se é uma declaração (padrão: false).
+     * @param type Tipo da variável, se for uma declaração (padrão: vazio).
      */
-    Assign(std::unique_ptr<Expression> left, std::unique_ptr<Expression> right);
+    Assign(std::unique_ptr<Expression> left, std::unique_ptr<Expression> right, 
+           bool isDecl = false, std::string type = "");
 
     /**
      * @brief Obtém a expressão do lado esquerdo.
      * @return Ponteiro para a expressão.
      */
-    Expression* getLeft() const;
+    Expression *getLeft() const;
 
     /**
      * @brief Obtém a expressão do lado direito.
      * @return Ponteiro para a expressão.
      */
-    Expression* getRight() const;
-    std::vector<Node*> getAttributes() override { return {}; }
+    Expression *getRight() const;
+
+    /**
+     * @brief Verifica se a atribuição é uma declaração.
+     * @return true se for uma declaração, false caso contrário.
+     */
+    bool isDeclaration() const;
+
+    /**
+     * @brief Obtém o tipo da variável, se for uma declaração.
+     * @return String com o tipo da variável.
+     */
+    std::string getVarType() const;
+
+    std::vector<Node *> getAttributes() override { return {}; }
 
 private:
-    std::unique_ptr<Expression> left;  ///< Expressão do lado esquerdo.
-    std::unique_ptr<Expression> right; ///< Expressão do lado direito.
+    std::unique_ptr<Expression> left;  // Expressão do lado esquerdo.
+    std::unique_ptr<Expression> right; // Expressão do lado direito.
+    bool isDecl;                       // Indica se é uma declaração.
+    std::string varType;               // Tipo da variável, se for uma declaração.
 };
 
 /**
  * @brief Representa uma instrução de retorno.
  */
-class Return : public Statement {
+class Return : public Statement
+{
 public:
     /**
      * @brief Construtor para um retorno.
@@ -394,41 +387,44 @@ public:
      * @brief Obtém a expressão associada ao retorno.
      * @return Ponteiro para a expressão.
      */
-    Expression* getExpr() const;
-    std::vector<Node*> getAttributes() override { return {}; }
+    Expression *getExpr() const;
+    std::vector<Node *> getAttributes() override { return {}; }
 
 private:
-    std::unique_ptr<Expression> expr; ///< Expressão a ser retornada.
+    std::unique_ptr<Expression> expr; // Expressão a ser retornada.
 };
 
 /**
  * @brief Representa uma instrução break.
  */
-class Break : public Statement {
+class Break : public Statement
+{
 public:
     /**
      * @brief Construtor para break.
      */
     Break();
-    std::vector<Node*> getAttributes() override { return {}; }
+    std::vector<Node *> getAttributes() override { return {}; }
 };
 
 /**
  * @brief Representa uma instrução continue.
  */
-class Continue : public Statement {
+class Continue : public Statement
+{
 public:
     /**
      * @brief Construtor para continue.
      */
     Continue();
-    std::vector<Node*> getAttributes() override { return {}; }
+    std::vector<Node *> getAttributes() override { return {}; }
 };
 
 /**
  * @brief Representa a definição de uma função.
  */
-class FuncDef : public Statement {
+class FuncDef : public Statement
+{
 public:
     /**
      * @brief Construtor para a definição de uma função.
@@ -437,7 +433,7 @@ public:
      * @param params Parâmetros da função.
      * @param body Ponteiro único para o corpo da função.
      */
-    FuncDef(const std::string& name, const std::string& return_type, Parameters&& params, std::unique_ptr<Body> body);
+    FuncDef(const std::string &name, const std::string &return_type, Parameters &&params, std::unique_ptr<Body> body);
 
     /**
      * @brief Obtém o nome da função.
@@ -455,26 +451,27 @@ public:
      * @brief Obtém os parâmetros da função.
      * @return Referência constante para os parâmetros.
      */
-    const Parameters& getParams() const;
+    const Parameters &getParams() const;
 
     /**
      * @brief Obtém o corpo da função.
      * @return Referência constante para o corpo (lista de statements).
      */
-    const Body& getBody() const;
-    std::vector<Node*> getAttributes() override { return {}; }
+    const Body &getBody() const;
+    std::vector<Node *> getAttributes() override { return {}; }
 
 private:
-    std::string name;           ///< Nome da função.
-    std::string return_type;    ///< Tipo de retorno.
-    Parameters params;          ///< Parâmetros da função.
-    std::unique_ptr<Body> body; ///< Corpo da função.
+    std::string name;           // Nome da função.
+    std::string return_type;    // Tipo de retorno.
+    Parameters params;          // Parâmetros da função.
+    std::unique_ptr<Body> body; // Corpo da função.
 };
 
 /**
  * @brief Representa uma instrução condicional (if/else).
  */
-class If : public Statement {
+class If : public Statement
+{
 public:
     /**
      * @brief Construtor para um if.
@@ -488,31 +485,32 @@ public:
      * @brief Obtém a condição do if.
      * @return Ponteiro para a expressão condicional.
      */
-    Expression* getCondition() const;
+    Expression *getCondition() const;
 
     /**
      * @brief Obtém o corpo do if.
      * @return Referência constante para o corpo.
      */
-    const Body& getBody() const;
+    const Body &getBody() const;
 
     /**
      * @brief Obtém o corpo do else, se existir.
      * @return Ponteiro para o corpo do else ou nullptr.
      */
-    const Body* getElseStmt() const;
-    std::vector<Node*> getAttributes() override { return {}; }
+    const Body *getElseStmt() const;
+    std::vector<Node *> getAttributes() override { return {}; }
 
 private:
-    std::unique_ptr<Expression> condition; ///< Expressão condicional.
-    std::unique_ptr<Body> body;            ///< Corpo do if.
-    std::unique_ptr<Body> else_stmt;       ///< Corpo do else (opcional).
+    std::unique_ptr<Expression> condition; // Expressão condicional.
+    std::unique_ptr<Body> body;            // Corpo do if.
+    std::unique_ptr<Body> else_stmt;       // Corpo do else (opcional).
 };
 
 /**
  * @brief Representa um loop while.
  */
-class While : public Statement {
+class While : public Statement
+{
 public:
     /**
      * @brief Construtor para um loop while.
@@ -525,24 +523,25 @@ public:
      * @brief Obtém a condição do loop.
      * @return Ponteiro para a expressão condicional.
      */
-    Expression* getCondition() const;
+    Expression *getCondition() const;
 
     /**
      * @brief Obtém o corpo do loop.
      * @return Referência constante para o corpo.
      */
-    const Body& getBody() const;
-    std::vector<Node*> getAttributes() override { return {}; }
+    const Body &getBody() const;
+    std::vector<Node *> getAttributes() override { return {}; }
 
 private:
-    std::unique_ptr<Expression> condition; ///< Condição do loop.
-    std::unique_ptr<Body> body;            ///< Corpo do loop.
+    std::unique_ptr<Expression> condition; // Condição do loop.
+    std::unique_ptr<Body> body;            // Corpo do loop.
 };
 
 /**
  * @brief Representa um bloco de execução paralela.
  */
-class Par : public Statement {
+class Par : public Statement
+{
 public:
     /**
      * @brief Construtor para um bloco paralelo.
@@ -554,39 +553,44 @@ public:
      * @brief Obtém o corpo do bloco paralelo.
      * @return Referência constante para o corpo.
      */
-    const Body& getBody() const;
-    std::vector<Node*> getAttributes() override { return {}; }
+    const Body &getBody() const;
+    std::vector<Node *> getAttributes() override { return {}; }
 
 private:
-    std::unique_ptr<Body> body; ///< Corpo do bloco paralelo.
+    std::unique_ptr<Body> body; // Corpo do bloco paralelo.
 };
 
 /**
  * @brief Representa um bloco de execução sequencial.
  */
-class Seq : public Statement {
+class Seq : public Statement
+{
 public:
-    /**
-     * @brief Construtor para um bloco sequencial.
-     * @param body Ponteiro único para o corpo do bloco.
-     */
-    Seq(std::unique_ptr<Body> body);
+    Seq(std::unique_ptr<Body> body, bool is_block = false) 
+        : body(std::move(body)), is_block(is_block) {}
 
-    /**
-     * @brief Obtém o corpo do bloco sequencial.
-     * @return Referência constante para o corpo.
-     */
-    const Body& getBody() const;
-    std::vector<Node*> getAttributes() override { return {}; }
+    const Body &getBody() const { return *body; }
+    bool isBlock() const { return is_block; }
+
+    // Corrigir getAttributes() para retornar os nós do corpo
+    std::vector<Node *> getAttributes() override {
+        std::vector<Node *> attrs;
+        for (const auto &stmt : *body) {
+            attrs.push_back(stmt.get());
+        }
+        return attrs;
+    }
 
 private:
-    std::unique_ptr<Body> body; ///< Corpo do bloco sequencial.
+    std::unique_ptr<Body> body;
+    bool is_block;
 };
 
 /**
  * @brief Classe base para canais de comunicação.
  */
-class Channel : public Statement {
+class Channel : public Statement
+{
 public:
     /**
      * @brief Construtor para um canal.
@@ -594,7 +598,7 @@ public:
      * @param localhost Ponteiro único para a expressão representando o endereço local.
      * @param port Ponteiro único para a expressão representando a porta.
      */
-    Channel(const std::string& name, std::unique_ptr<Expression> localhost, std::unique_ptr<Expression> port);
+    Channel(const std::string &name, std::unique_ptr<Expression> localhost, std::unique_ptr<Expression> port);
 
     /**
      * @brief Obtém o nome do canal.
@@ -618,19 +622,19 @@ public:
      * @brief Obtém o nó da expressão representando o endereço local.
      * @return Ponteiro para a expressão.
      */
-    Expression* getLocalhostNode() const;
+    Expression *getLocalhostNode() const;
 
     /**
      * @brief Obtém o nó da expressão representando a porta.
      * @return Ponteiro para a expressão.
      */
-    Expression* getPortNode() const;
-    std::vector<Node*> getAttributes() override { return {}; }
+    Expression *getPortNode() const;
+    std::vector<Node *> getAttributes() override { return {}; }
 
 protected:
-    std::string name;                         ///< Nome do canal.
-    std::unique_ptr<Expression> _localhost;     ///< Expressão representando o endereço local.
-    std::unique_ptr<Expression> _port;          ///< Expressão representando a porta.
+    std::string name;                       // Nome do canal.
+    std::unique_ptr<Expression> _localhost; // Expressão representando o endereço local.
+    std::unique_ptr<Expression> _port;      // Expressão representando a porta.
 };
 
 /**
@@ -638,7 +642,8 @@ protected:
  *
  * Extende a classe Channel, adicionando o nome da função associada e uma descrição.
  */
-class SChannel : public Channel {
+class SChannel : public Channel
+{
 public:
     /**
      * @brief Construtor para um canal de serviço.
@@ -648,8 +653,8 @@ public:
      * @param func_name Nome da função associada.
      * @param description Ponteiro único para a expressão da descrição.
      */
-    SChannel(const std::string& name, std::unique_ptr<Expression> localhost, std::unique_ptr<Expression> port,
-             const std::string& func_name, std::unique_ptr<Expression> description);
+    SChannel(const std::string &name, std::unique_ptr<Expression> localhost, std::unique_ptr<Expression> port,
+             const std::string &func_name, std::unique_ptr<Expression> description);
 
     /**
      * @brief Obtém o nome da função associada ao canal.
@@ -661,12 +666,12 @@ public:
      * @brief Obtém a descrição do canal.
      * @return Ponteiro para a expressão que descreve o canal.
      */
-    Expression* getDescription() const;
-    std::vector<Node*> getAttributes() override { return {}; }
+    Expression *getDescription() const;
+    std::vector<Node *> getAttributes() override { return {}; }
 
 private:
-    std::string func_name;                   ///< Nome da função associada.
-    std::unique_ptr<Expression> description; ///< Expressão contendo a descrição.
+    std::string func_name;                   // Nome da função associada.
+    std::unique_ptr<Expression> description; // Expressão contendo a descrição.
 };
 
 /**
@@ -674,7 +679,8 @@ private:
  *
  * Extende a classe Channel sem adicionar atributos adicionais.
  */
-class CChannel : public Channel {
+class CChannel : public Channel
+{
 public:
     /**
      * @brief Construtor para um canal de cliente.
@@ -682,8 +688,50 @@ public:
      * @param localhost Ponteiro único para a expressão do endereço local.
      * @param port Ponteiro único para a expressão da porta.
      */
-    CChannel(const std::string& name, std::unique_ptr<Expression> localhost, std::unique_ptr<Expression> port);
-    std::vector<Node*> getAttributes() override { return {}; }
+    CChannel(const std::string &name, std::unique_ptr<Expression> localhost, std::unique_ptr<Expression> port);
+    std::vector<Node *> getAttributes() override { return {}; }
+};
+
+class Array : public Expression
+{
+public:
+    std::vector<std::unique_ptr<Expression>> elements;
+
+    Array(std::vector<std::unique_ptr<Expression>> elements)
+        : elements(std::move(elements)) {}
+
+    const std::vector<std::unique_ptr<Expression>> &getElements() const
+    {
+        return elements;
+    }
+
+    std::vector<Node *> getAttributes() override
+    {
+        std::vector<Node *> attrs;
+        for (auto &elem : elements)
+        {
+            attrs.push_back(elem.get());
+        }
+        return attrs;
+    }
+};
+
+class ArrayDecl : public Node {
+    private:
+        std::string name;
+        std::vector<std::unique_ptr<Expression>> dimensions;
+    public:
+        ArrayDecl(const std::string &name, std::vector<std::unique_ptr<Expression>> dims)
+            : name(name), dimensions(std::move(dims)) {}
+        const std::string &getName() const { return name; }
+        const std::vector<std::unique_ptr<Expression>> &getDimensions() const { return dimensions; }
+        std::vector<Node *> getAttributes() override {
+            std::vector<Node *> attrs;
+            for (auto &dim : dimensions) {
+                attrs.push_back(dim.get());
+            }
+            return attrs;
+        }
 };
 
 #endif // AST_HPP

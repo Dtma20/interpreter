@@ -1,0 +1,34 @@
+func partition(arr: array, low: num, high: num) -> num {
+    pivot: num = arr[high]
+    i: num = low - 1
+
+    for(j: num = low; j < high; j++) {
+        if (arr[j] <= pivot) {
+            i = i + 1
+            aux: num = arr[i]
+            arr[i] = arr[j]
+            arr[j] = aux
+        }
+    }
+
+    aux: num = arr[i + 1]
+    arr[i + 1] = arr[high]
+    arr[high] = aux
+
+    return i + 1
+}
+
+func quicksort(arr: array, low: num, high: num) -> void {
+    if (low < high) {
+        pi: num = partition(arr, low, high)
+        quicksort(arr, low,    pi - 1)
+        quicksort(arr, pi + 1, high)
+    }
+}
+
+arr: array[8] = [2,4,1,-4,-7,9,10,-20]
+n: num = len(arr)
+
+print("Antes:", arr, "\n")
+quicksort(arr, 0, n - 1)
+print("Depois:", arr, "\n")

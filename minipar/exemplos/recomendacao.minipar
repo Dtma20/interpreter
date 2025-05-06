@@ -1,0 +1,115 @@
+learning_rate: num = 0.2
+epochs: num = 100
+
+user_purchase_history: array[4] = ["Smartphone", "Jeans", "Micro-ondas", "Ficção"]
+
+eletronicos: array[4] = ["Smartphone", "Laptop", "Tablet", "Fones de ouvido"]
+roupas: array[4] = ["Camisa", "Jeans", "Jaqueta", "Sapatos"]
+eletro: array[4] = ["Geladeira", "Micro-ondas", "Máquina de lavar", "Ar condicionado"]
+livros: array[4] = ["Ficção", "Não-ficção", "Ficção científica", "Fantasia"]
+
+all_products: array[16] = [
+    eletronicos[0], eletronicos[1], eletronicos[2], eletronicos[3],
+    roupas[0], roupas[1], roupas[2], roupas[3],
+    eletro[0], eletro[1], eletro[2], eletro[3],
+    livros[0], livros[1], livros[2], livros[3]
+]
+
+print("Todos os produtos: ", all_products, "\n")
+
+encoded_history: array[16]
+i: num = 0
+while (i < 16) {
+    found: num = 0
+    j: num = 0
+    while (j < 4) {
+        if (all_products[i] == user_purchase_history[j]) {
+            found = 1
+        }
+        j++
+    }
+    encoded_history[i] = found
+    print("Produto:", all_products[i], " - Comprado anteriormente: ", found, "\n")
+    i++
+}
+
+input_size: num = 16
+hidden_size: num = 10
+output_size: num = 16
+
+hidden_biases: array[10]
+output_biases: array[16]
+hidden_weights: array[10][16]
+output_weights: array[16][10]
+
+i = 0
+while (i < hidden_size) {
+    hidden_biases[i] = 0.5
+    j: num = 0
+    while (j < input_size) {
+        hidden_weights[i][j] = 0.5
+        j++
+    }
+    print("Bias oculto[", i, "]: ", hidden_biases[i], "\n")
+    i++
+}
+
+i = 0
+while (i < output_size) {
+    output_biases[i] = 0.5
+    output_weights[i]
+    j: num = 0
+    while (j < hidden_size) {
+        output_weights[i][j] = 0.5
+        j++
+    }
+    print("Bias saída[", i, "]: ", output_biases[i], "\n")
+    i++
+}
+
+func sigmoid(x: num) -> num {
+    return 1 / (1 + exp(-x))
+}
+
+func forward_pass(x: array) -> array {
+    hidden_out: array[10]
+    i: num = 0
+    while (i < hidden_size) {
+        sum: num = hidden_biases[i]
+        j: num = 0
+        while (j < input_size) {
+            sum = sum + x[j] * hidden_weights[i][j]
+            j++
+        }
+        hidden_out[i] = sigmoid(sum)
+        print("Saída da camada oculta[", i, "]: ", hidden_out[i], "\n")
+        i++
+    }
+
+    output: array[16]
+    i = 0
+    while (i < output_size) {
+        sum: num = output_biases[i]
+        j: num = 0
+        while (j < hidden_size) {
+            sum = sum + hidden_out[j] * output_weights[i][j]
+            j++
+        }
+        output[i] = sigmoid(sum)
+        print("Ativação da saída[", i, "]: ", output[i], "\n")
+        i++
+    }
+    return output
+}
+
+predicted_output: array[16] = forward_pass(encoded_history)
+print(predicted_output, "\n")
+
+print("Produtos recomendados para você: \n")
+i = 0
+while (i < 16) {
+    if (predicted_output[i] > 0.5 && encoded_history[i] == 0) {
+        print("Recomendado: ", all_products[i], "\n")
+    }
+    i++
+}

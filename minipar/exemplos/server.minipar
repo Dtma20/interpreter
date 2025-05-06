@@ -1,0 +1,47 @@
+func calc(msg: string) -> string {
+    index : num = 0
+    size : num = len(msg)
+    result : num = 0
+    operator : string = "+"
+
+    print(msg)
+    while (index < size) {
+        if (isalpha(msg[index])) {
+            return "INVALIDO"
+        } else if (msg[index] == " ") {
+            index = index + 1
+            continue
+        } else if (isnum(msg[index])) {
+            valor : string = msg[index]
+            index = index + 1
+            while (index < size && isnum(msg[index])) {
+                valor = valor + msg[index]
+                index = index + 1
+            }
+            valor_num : num = to_num(valor)
+            if (operator == "+") {
+                result = result + valor_num
+            }
+            else if (operator == "-") {
+                result = result - valor_num
+            }
+            else if (operator == "*") {
+                result = result * valor_num
+            }
+            else if (operator == "/") {
+                result = result / valor_num
+            }
+            else {
+                return "INVALIDO"
+            }
+        } else {
+            operator = msg[index]
+            index = index + 1
+        }
+    }
+
+    return to_string(result)
+}
+
+description : string = "CALCULADORA SIMPLES"
+s_channel server {calc, description, "localhost", 8585}

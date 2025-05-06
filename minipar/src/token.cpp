@@ -16,7 +16,7 @@ Token::Token() : tag(""), value("") {}
  * @param tag Tipo ou categoria do token.
  * @param value Valor textual do token.
  */
-Token::Token(const std::string& tag, const std::string& value) : tag(tag), value(value) {}
+Token::Token(const std::string &tag, const std::string &value) : tag(tag), value(value) {}
 
 /**
  * @brief Retorna a tag do token.
@@ -48,7 +48,7 @@ std::string Token::toString() const { return "{{" + value + ", " + tag + "}}"; }
  */
 const std::vector<std::pair<std::string, std::string>> TOKEN_PATTERNS = {
     {"NAME", "[A-Za-z_][A-Za-z0-9_]*"},
-    {"NUMBER", "\\b\\d+\\.\\d+|\\.\\d+|\\d+\\b"},
+    {"NUM", "\\b\\d+\\.\\d+|\\.\\d+|\\d+\\b"},
     {"RARROW", "->"},
     {"STRING", "\"(?:[^\"]*)\""},
     {"SCOMMENT", "#.*"},
@@ -59,19 +59,20 @@ const std::vector<std::pair<std::string, std::string>> TOKEN_PATTERNS = {
     {"NEQ", "!="},
     {"LTE", "<="},
     {"GTE", ">="},
-    {"COLON", ":"},     
-    {"ASSIGN", "="},    
-    {"LPAREN", "\\("},  
-    {"RPAREN", "\\)"},  
+    {"COLON", ":"},
+    {"ASSIGN", "="},
+    {"LPAREN", "\\("},
+    {"RPAREN", "\\)"},
     {"LBRACK", "\\["},
     {"RBRACK", "\\]"},
     {"LBRACE", "\\{"},
     {"RBRACE", "\\}"},
     {"NEWLINE", "\n"},
     {"WHITESPACE", "\\s+"},
-    {"OTHER", "."},
     {"FOR", "for"},
-};
+    {"INC", "\\+\\+"},
+    {"DEC", "--"},
+    {"OTHER", "."}};
 
 /**
  * @brief Conjunto de tokens que iniciam statements.
@@ -81,8 +82,7 @@ const std::vector<std::pair<std::string, std::string>> TOKEN_PATTERNS = {
  */
 const std::unordered_set<std::string> STATEMENT_TOKENS = {
     "ID", "FUNC", "IF", "ELSE", "WHILE", "RETURN", "BREAK", "CONTINUE",
-    "SEQ", "PAR", "C_CHANNEL", "S_CHANNEL", "FOR"
-};
+    "SEQ", "PAR", "C_CHANNEL", "S_CHANNEL", "FOR"};
 
 /**
  * @brief Funções padrão e seus tipos de retorno.
@@ -101,7 +101,7 @@ const std::unordered_map<std::string, std::string> DEFAULT_FUNCTION_NAMES = {
     {"close", "VOID"},
     {"len", "NUMBER"},
     {"isalpha", "BOOL"},
-    {"isnum", "BOOL"}
+    {"isnum", "BOOL"},
 };
 
 /**
@@ -110,10 +110,13 @@ const std::unordered_map<std::string, std::string> DEFAULT_FUNCTION_NAMES = {
  * Constrói uma única expressão regular concatenando os padrões definidos em TOKEN_PATTERNS,
  * separando-os pelo operador '|' (ou lógico) para facilitar a identificação dos tokens.
  */
-const std::string TOKEN_REGEX = []() {
+const std::string TOKEN_REGEX = []()
+{
     std::string regex;
-    for (const auto& pair : TOKEN_PATTERNS) {
-        if (!regex.empty()) {
+    for (const auto &pair : TOKEN_PATTERNS)
+    {
+        if (!regex.empty())
+        {
             regex += "|";
         }
         regex += "(" + pair.second + ")";

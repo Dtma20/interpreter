@@ -1,0 +1,16 @@
+n: num = 5
+a: array[n] = [5, 4, 3, 2, 1]
+
+print(a, "\n")
+
+for(i: num = 0; i < n - 1; i++) {
+    for(j: num = 0; j < n - i - 1; j++) {
+        if(a[j] > a[j + 1]) {
+            aux: num = a[j]
+            a[j] = a[j + 1]
+            a[j + 1] = aux
+        }
+    }
+}
+
+print(a, "\n")
