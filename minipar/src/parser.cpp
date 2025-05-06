@@ -688,7 +688,6 @@ std::unique_ptr<Node> Parser::stmtFor()
         body.push_back(stmt());
     match("RBRACE");
 
-    // Reescreve o FOR como uma sequência de inicialização seguida de um WHILE
     Body while_body;
     for (auto &s : body)
         while_body.push_back(std::move(s));
@@ -697,7 +696,7 @@ std::unique_ptr<Node> Parser::stmtFor()
     Body for_body;
     for_body.push_back(std::move(init));
     for_body.push_back(std::make_unique<While>(std::move(cond), std::make_unique<Body>(std::move(while_body))));
-    return std::make_unique<Seq>(std::make_unique<Body>(std::move(for_body)));
+    return std::make_unique<Seq>(std::make_unique<Body>(std::move(for_body)), true);
 }
 
 /**

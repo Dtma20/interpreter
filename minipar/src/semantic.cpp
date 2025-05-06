@@ -238,7 +238,6 @@ void SemanticAnalyzer::visit_ArrayDecl(ArrayDecl *node) {
     scope_stack.back()[node->getName()] = t;
 }
 
-
 /**
  * @brief Verifica a consistência de tipo em atribuições.
  *
@@ -384,8 +383,6 @@ void SemanticAnalyzer::visit_Assign(Assign *node)
         return;
     }
     
-    
-
     throw SemanticError("Lado esquerdo inválido em atribuição");
 }
 
@@ -445,7 +442,6 @@ void SemanticAnalyzer::visit_FuncDef(FuncDef *node)
 
     LOG_DEBUG("SemanticAnalyzer: exit FuncDef " << fname);
 }
-
 
 /**
  * @brief Analisa uma instrução de retorno.
@@ -907,7 +903,6 @@ std::optional<std::string> SemanticAnalyzer::visit_Call(const Call *node) const
     // Caso contrário, retorna o tipo declarado na assinatura, normalizado
     return normalize(f->getReturnType());
 }
-
 
 /**
  * @brief Analisa um array.

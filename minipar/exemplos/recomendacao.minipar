@@ -15,7 +15,7 @@ all_products: array[16] = [
     livros[0], livros[1], livros[2], livros[3]
 ]
 
-print("Todos os produtos: ", all_products, "\n")
+# print("Todos os produtos: ", all_products, "\n")
 
 encoded_history: array[16]
 i: num = 0
@@ -29,7 +29,7 @@ while (i < 16) {
         j++
     }
     encoded_history[i] = found
-    print("Produto:", all_products[i], " - Comprado anteriormente: ", found, "\n")
+    # print("Produto:", all_products[i], " - Comprado anteriormente: ", found, "\n")
     i++
 }
 
@@ -50,7 +50,7 @@ while (i < hidden_size) {
         hidden_weights[i][j] = 0.5
         j++
     }
-    print("Bias oculto[", i, "]: ", hidden_biases[i], "\n")
+    # print("Bias oculto[", i, "]: ", hidden_biases[i], "\n")
     i++
 }
 
@@ -63,7 +63,7 @@ while (i < output_size) {
         output_weights[i][j] = 0.5
         j++
     }
-    print("Bias saída[", i, "]: ", output_biases[i], "\n")
+    # print("Bias saída[", i, "]: ", output_biases[i], "\n")
     i++
 }
 
@@ -82,7 +82,7 @@ func forward_pass(x: array) -> array {
             j++
         }
         hidden_out[i] = sigmoid(sum)
-        print("Saída da camada oculta[", i, "]: ", hidden_out[i], "\n")
+        # print("Saída da camada oculta[", i, "]: ", hidden_out[i], "\n")
         i++
     }
 
@@ -105,7 +105,7 @@ func forward_pass(x: array) -> array {
 predicted_output: array[16] = forward_pass(encoded_history)
 print(predicted_output, "\n")
 
-print("Produtos recomendados para você: \n")
+# print("Produtos recomendados para você: \n")
 i = 0
 while (i < 16) {
     if (predicted_output[i] > 0.5 && encoded_history[i] == 0) {

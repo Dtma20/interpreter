@@ -139,6 +139,7 @@ class CChannelValue {
  */
 struct ValueWrapper
 {
+    
     std::variant<std::monostate, double, bool, std::string, std::vector<ValueWrapper>, std::shared_ptr<CChannelValue>> data;
 
     ValueWrapper() : data(std::monostate{}) {}
