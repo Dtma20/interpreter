@@ -17,6 +17,7 @@
 #include <iomanip>
 #include <cmath>
 #include "../include/debug.hpp"
+#include <arpa/inet.h>
 
 /**
  * @brief Remove escape sequences de uma string.
@@ -592,14 +593,12 @@ ValueWrapper Interpreter::evaluateFunctionCall(Call *call)
     {
         size_t numArgs = call->getArgs().size();
 
-        // 0 argumentos: retorna 0 ou 1
         if (numArgs == 0)
         {
             int random_int = rand() % 2;
             LOG_DEBUG("Interpreter: randi() retornando: " << random_int);
             return ValueWrapper(static_cast<double>(random_int));
         }
-        // 1 argumento: retorna inteiro em [0 … max]
         else if (numArgs == 1)
         {
             ValueWrapper arg = evaluate(call->getArgs()[0].get());
@@ -612,7 +611,6 @@ ValueWrapper Interpreter::evaluateFunctionCall(Call *call)
             LOG_DEBUG("Interpreter: randi(max) retornando: " << random_int);
             return ValueWrapper(static_cast<double>(random_int));
         }
-        // 2 argumentos: retorna inteiro em [min … max]
         else if (numArgs == 2)
         {
             auto arg1 = evaluate(call->getArgs()[0].get());
@@ -633,6 +631,63 @@ ValueWrapper Interpreter::evaluateFunctionCall(Call *call)
         {
             throw RunTimeError("randi aceita no máximo 2 argumentos");
         }
+    }
+    else if (func_name == "input")
+    {
+        std::string prompt = "";
+
+        if (!call->getArgs().empty() && call->getArgs()[0])
+        {
+            ValueWrapper arg = evaluate(call->getArgs()[0].get());
+            prompt = convert_value_to_string(arg);
+        }
+
+        std::string user_input;
+        {
+            std::lock_guard<std::mutex> lk(cout_mutex);
+            std::cout << prompt << std::flush;
+            std::getline(std::cin, user_input);
+        }
+
+        LOG_DEBUG("Interpreter: input retornando: " << user_input);
+        return ValueWrapper(user_input);
+    }
+
+    else if (func_name == "send")
+    {
+        if (call->getArgs().size() != 2)
+            throw RunTimeError("Função 'send' espera 2 argumentos");
+
+        ValueWrapper ch_val = evaluate(call->getArgs()[0].get());
+        ValueWrapper msg_val = evaluate(call->getArgs()[1].get());
+
+        if (!std::holds_alternative<std::shared_ptr<CChannelValue>>(ch_val.data))
+            throw RunTimeError("Primeiro argumento de 'send' deve ser um canal cliente");
+        if (!std::holds_alternative<std::string>(msg_val.data))
+            throw RunTimeError("Segundo argumento de 'send' deve ser uma string");
+
+        auto channel = std::get<std::shared_ptr<CChannelValue>>(ch_val.data);
+        const auto &msg = std::get<std::string>(msg_val.data);
+
+        channel->send_raw(msg + "\n");
+        std::string response = channel->recv_until('\n');
+
+        return ValueWrapper(response);
+    }
+    else if (func_name == "close")
+    {
+        if (call->getArgs().size() != 1)
+            throw RunTimeError("Função 'close' espera 1 argumento");
+
+        ValueWrapper ch_val = evaluate(call->getArgs()[0].get());
+        if (!std::holds_alternative<std::shared_ptr<CChannelValue>>(ch_val.data))
+            throw RunTimeError("Argumento de 'close' deve ser um canal cliente");
+
+        auto channel = std::get<std::shared_ptr<CChannelValue>>(ch_val.data);
+
+        channel->close();
+
+        return ValueWrapper();
     }
 
     else if (functions.find(func_name) != functions.end())
@@ -1095,6 +1150,76 @@ void Interpreter::run_server(SChannel *schannel)
 }
 
 /**
+ * @brief Executa um canal de cliente (CChannel).
+ *
+ * Cria um socket TCP e conecta-se ao host e porta especificados no canal.
+ * Em seguida, lê da entrada padrão e envia a mensagem para o servidor.
+ * A resposta do servidor é impressa na saída padrão.
+ *
+ * @param cchannel O canal de cliente a ser executado.
+ */
+void Interpreter::run_client(CChannel *cchannel)
+{
+    std::string name = cchannel->getName();
+    ValueWrapper localhost_val = evaluate(cchannel->getLocalhostNode());
+    ValueWrapper port_val = evaluate(cchannel->getPortNode());
+
+    std::string host = std::get<std::string>(localhost_val.data);
+    int port = static_cast<int>(std::get<double>(port_val.data));
+
+    struct sockaddr_in serv_addr;
+    char buffer[1024];
+
+    std::cout << "CChannel '" << name
+              << "' pronto para conectar em " << host << ":" << port << "\n";
+
+    while (true)
+    {
+        std::string message;
+        {
+            std::lock_guard<std::mutex> lk(cout_mutex);
+            std::getline(std::cin, message);
+        }
+        if (message.empty())
+            continue;
+
+        // 2) Cria socket
+        int sock = socket(AF_INET, SOCK_STREAM, 0);
+        if (sock < 0)
+            throw RunTimeError("Erro ao criar socket para CChannel '" + name + "'");
+
+        std::memset(&serv_addr, 0, sizeof(serv_addr));
+        serv_addr.sin_family = AF_INET;
+        serv_addr.sin_port = htons(port);
+
+        if (inet_pton(AF_INET, host.c_str(), &serv_addr.sin_addr) <= 0)
+        {
+            close(sock);
+            throw RunTimeError("Endereço inválido em CChannel '" + name + "'");
+        }
+        if (connect(sock, (struct sockaddr *)&serv_addr, sizeof(serv_addr)) < 0)
+        {
+            close(sock);
+            std::cerr << "CChannel '" << name << "': falha ao conectar, tentando novamente\n";
+            continue;
+        }
+        send(sock, message.c_str(), message.size(), 0);
+        int n = read(sock, buffer, sizeof(buffer) - 1);
+        if (n < 0)
+        {
+            std::cerr << "CChannel '" << name << "': erro na leitura da resposta\n";
+        }
+        else
+        {
+            buffer[n] = '\0';
+            std::lock_guard<std::mutex> lk(cout_mutex);
+            std::cout << "Resposta recebida: " << buffer << "\n";
+        }
+        close(sock);
+    }
+}
+
+/**
  * @brief Converte um ValueWrapper para sua representação em string.
  *
  * @param value Valor a ser convertido.
@@ -1170,14 +1295,12 @@ void Interpreter::execute_stmt(Node *stmt)
     }
     LOG_DEBUG("Interpreter: Executando stmt, tipo: " << typeid(*stmt).name());
 
-    // 1) Unary como statement
     if (auto *unary = dynamic_cast<Unary *>(stmt))
     {
         LOG_DEBUG("Interpreter: Executando Unary como statement");
         evaluate(unary);
         return;
     }
-    // 2) Atribuição
     else if (auto *assign = dynamic_cast<Assign *>(stmt))
     {
         Expression *left = assign->getLeft();
@@ -1187,8 +1310,6 @@ void Interpreter::execute_stmt(Node *stmt)
             LOG_DEBUG("Interpreter: ValueWrapper não inicializado ao atribuir");
             throw RunTimeError("ValueWrapper não inicializado ao atribuir");
         }
-
-        // 2.1) Identificador simples
         if (auto *id = dynamic_cast<ID *>(left))
         {
             const std::string var_name = id->getToken().getValue();
@@ -1197,11 +1318,9 @@ void Interpreter::execute_stmt(Node *stmt)
 
             if (var_it != current.variables.end())
             {
-                // Variável existe no escopo atual
                 auto &dataVar = var_it->second->data;
                 if (std::holds_alternative<std::vector<ValueWrapper>>(dataVar))
                 {
-                    // Atualizar elementos do array
                     auto &arr = std::get<std::vector<ValueWrapper>>(dataVar);
                     if (std::holds_alternative<std::vector<ValueWrapper>>(value.data))
                     {
@@ -1212,19 +1331,16 @@ void Interpreter::execute_stmt(Node *stmt)
                     }
                     else
                     {
-                        // Valor escalar: substitui completamente
                         *(var_it->second) = value;
                     }
                 }
                 else
                 {
-                    // Atribuição escalar
                     *(var_it->second) = value;
                 }
             }
             else
             {
-                // Procurar em escopos superiores
                 bool updated = false;
                 for (auto it = scopes.rbegin(); it != scopes.rend(); ++it)
                 {
@@ -1257,15 +1373,12 @@ void Interpreter::execute_stmt(Node *stmt)
                 }
                 if (!updated)
                 {
-                    // Criar nova variável no escopo atual
                     scopes.back().variables[var_name] = std::make_shared<ValueWrapper>(value);
                 }
             }
         }
-        // 2.2) Acesso a elemento (array ou string)
         else if (auto *access = dynamic_cast<Access *>(left))
         {
-            // Coleta índices e chain de Access
             std::vector<int> indices;
             std::vector<Expression *> chain;
             Expression *current = access;
@@ -1279,8 +1392,6 @@ void Interpreter::execute_stmt(Node *stmt)
                 current = acc->getBase();
             }
             const std::string base_name = dynamic_cast<ID *>(current)->getToken().getValue();
-
-            // Obter ponteiro para ValueWrapper base
             ValueWrapper *node = nullptr;
             for (auto it = scopes.rbegin(); it != scopes.rend(); ++it)
             {
@@ -1293,8 +1404,6 @@ void Interpreter::execute_stmt(Node *stmt)
             }
             if (!node)
                 throw RunTimeError("Variável " + base_name + " não definida");
-
-            // Descer na cadeia e atribuir in-place
             for (int i = static_cast<int>(chain.size()) - 1; i >= 0; --i)
             {
                 auto &arr = std::get<std::vector<ValueWrapper>>(node->data);
@@ -1316,7 +1425,6 @@ void Interpreter::execute_stmt(Node *stmt)
             throw RunTimeError("Lado esquerdo da atribuição deve ser uma variável ou um acesso a índice");
         }
     }
-    // 3) Chamada de função como statement
     else if (auto *call = dynamic_cast<Call *>(stmt))
     {
         LOG_DEBUG("Interpreter: Executando chamada de função como statement");
@@ -1327,20 +1435,17 @@ void Interpreter::execute_stmt(Node *stmt)
         LOG_DEBUG("Interpreter: Executando Access como statement");
         evaluate(accessStmt);
     }
-    // 4) Definição de função
     else if (auto *func_def = dynamic_cast<FuncDef *>(stmt))
     {
         functions[func_def->getName()] = func_def;
         LOG_DEBUG("Interpreter: Definindo função: " << func_def->getName());
     }
-    // 5) Return
     else if (auto *ret = dynamic_cast<Return *>(stmt))
     {
         return_value = evaluate(ret->getExpr());
         return_flag = true;
         LOG_DEBUG("Interpreter: Retorno definido: " << convert_value_to_string(return_value));
     }
-    // 6) If
     else if (auto *if_stmt = dynamic_cast<If *>(stmt))
     {
         ValueWrapper cond = evaluate(if_stmt->getCondition());
@@ -1367,7 +1472,6 @@ void Interpreter::execute_stmt(Node *stmt)
             pop_scope();
         }
     }
-    // 7) While
     else if (auto *while_stmt = dynamic_cast<While *>(stmt))
     {
         while (true)
@@ -1403,39 +1507,37 @@ void Interpreter::execute_stmt(Node *stmt)
             }
         }
     }
-    // 8) Break
     else if (auto *brk = dynamic_cast<Break *>(stmt))
     {
         break_flag = true;
     }
-    // 9) Continue
     else if (auto *cont = dynamic_cast<Continue *>(stmt))
     {
         continue_flag = true;
     }
-    // 10) PAR
-    else if (auto *par = dynamic_cast<Par *>(stmt)) {
-        const auto& body = par->getBody();
+    else if (auto *par = dynamic_cast<Par *>(stmt))
+    {
+        const auto &body = par->getBody();
         std::vector<std::thread> threads;
         threads.reserve(body.size());
-    
+
         static std::mutex cout_mutex;
-    
-        for (const auto& uptr : body) {
-            threads.emplace_back([this, ptr = uptr.get()]() {
+
+        for (const auto &uptr : body)
+        {
+            threads.emplace_back([this, ptr = uptr.get()]()
+                                 {
                 execute_stmt(ptr);
-                std::lock_guard<std::mutex> lk(cout_mutex);
-            });
+                std::lock_guard<std::mutex> lk(cout_mutex); });
         }
-    
-        for (auto& t : threads) {
+
+        for (auto &t : threads)
+        {
             if (t.joinable())
                 t.join();
         }
     }
-    
-    
-    // 11) SEQ
+
     else if (auto *seq = dynamic_cast<Seq *>(stmt))
     {
         if (seq->isBlock())
@@ -1449,22 +1551,28 @@ void Interpreter::execute_stmt(Node *stmt)
         if (seq->isBlock())
             pop_scope();
     }
-    // 12) CChannel
     else if (auto *cch = dynamic_cast<CChannel *>(stmt))
     {
         std::string name = cch->getName();
+        // Avalia nó de host e porta
         ValueWrapper host = evaluate(cch->getLocalhostNode());
         ValueWrapper port = evaluate(cch->getPortNode());
+        std::string h = std::get<std::string>(host.data);
+        int p = static_cast<int>(std::get<double>(port.data));
+
+        // 1) Cria o objeto CChannelValue (precisa do construtor adequado)
+        auto channelVal = std::make_shared<CChannelValue>(h, p);
+        // 2) Armazena no escopo
+        scopes.back().variables[name] = std::make_shared<ValueWrapper>(channelVal);
+
         std::cout << "CChannel '" << name << "' criado com localhost: "
-                  << std::get<std::string>(host.data)
-                  << ", port: " << std::get<double>(port.data) << std::endl;
+                  << h << ", port: " << p << std::endl;
     }
-    // 13) SChannel
+
     else if (auto *sch = dynamic_cast<SChannel *>(stmt))
     {
         run_server(sch);
     }
-    // 14) ArrayDecl
     else if (auto *arr_decl = dynamic_cast<ArrayDecl *>(stmt))
     {
         const std::string var_name = arr_decl->getName();
@@ -1479,7 +1587,6 @@ void Interpreter::execute_stmt(Node *stmt)
                 throw RunTimeError("Tamanho do array '" + var_name + "' não pode ser negativo");
             dims.push_back(sz);
         }
-        // Functor recursivo para criar array multidimensional
         std::function<ValueWrapper(const std::vector<int> &, size_t)> make_arr =
             [&](const std::vector<int> &d, size_t lvl) -> ValueWrapper
         {
@@ -1492,7 +1599,6 @@ void Interpreter::execute_stmt(Node *stmt)
         };
         scopes.back().variables[var_name] = std::make_shared<ValueWrapper>(make_arr(dims, 0));
     }
-    // Demais casos
     else
     {
         throw RunTimeError("Statement não suportado: " + std::string(typeid(*stmt).name()));

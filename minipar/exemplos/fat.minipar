@@ -1,4 +1,4 @@
-n: num = 9
+n: num = to_num(input("Digite um número: "))
 fat: array[n]
 fat[0] = 1
 fat[1] = 1

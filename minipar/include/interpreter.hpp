@@ -2,7 +2,7 @@
 #define INTERPRETER_HPP
 
 #include <map>
-#include<mutex>
+#include <mutex>
 #include <string>
 #include <vector>
 #include <memory>
@@ -13,6 +13,123 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <unistd.h>
+#include <arpa/inet.h>
+#include <netdb.h> 
+
+static std::mutex cout_mutex;
+
+/**
+ * @brief Representa o valor de um canal de cliente.
+ *
+ * Um canal de cliente precisa do seu nome e do número do socket criado.
+ */
+class CChannelValue {
+    public:
+        CChannelValue(const std::string &host, uint16_t port)
+            : sock_fd_(-1), host_(host), port_(port)
+        {
+            struct addrinfo hints{}, *res = nullptr;
+            hints.ai_family   = AF_UNSPEC;
+            hints.ai_socktype = SOCK_STREAM;
+            hints.ai_flags    = AI_ADDRCONFIG;
+    
+            int err = ::getaddrinfo(host_.c_str(),
+                                    std::to_string(port_).c_str(),
+                                    &hints, &res);
+            if (err != 0) {
+                throw std::runtime_error("CChannel: getaddrinfo falhou para '" +
+                                         host_ + "': " + gai_strerror(err));
+            }
+
+            for (auto ptr = res; ptr != nullptr; ptr = ptr->ai_next) {
+                sock_fd_ = ::socket(ptr->ai_family,
+                                    ptr->ai_socktype,
+                                    ptr->ai_protocol);
+                if (sock_fd_ < 0) continue;
+    
+                if (::connect(sock_fd_, ptr->ai_addr, ptr->ai_addrlen) == 0) {
+                    break;
+                }
+                ::close(sock_fd_);
+                sock_fd_ = -1;
+            }
+    
+            freeaddrinfo(res);
+    
+            if (sock_fd_ < 0) {
+                throw std::runtime_error("CChannel: falha ao conectar em " +
+                                         host_ + ":" + std::to_string(port_));
+            }
+        }
+
+        ~CChannelValue() {
+            if (sock_fd_ >= 0) {
+                ::close(sock_fd_);
+            }
+        }
+
+        CChannelValue(const CChannelValue&) = delete;
+        CChannelValue& operator=(const CChannelValue&) = delete;
+    
+        CChannelValue(CChannelValue&& other) noexcept
+            : sock_fd_(other.sock_fd_),
+              host_(std::move(other.host_)),
+              port_(other.port_)
+        {
+            other.sock_fd_ = -1;
+        }
+    
+        CChannelValue& operator=(CChannelValue&& other) noexcept {
+            if (this != &other) {
+                if (sock_fd_ >= 0) ::close(sock_fd_);
+                sock_fd_ = other.sock_fd_;
+                host_    = std::move(other.host_);
+                port_    = other.port_;
+                other.sock_fd_ = -1;
+            }
+            return *this;
+        }
+
+        void close() noexcept {
+            if (sock_fd_ >= 0) {
+                ::close(sock_fd_);
+                sock_fd_ = -1;
+            }
+        }
+
+        void send_raw(const std::string &msg) const {
+            ssize_t total = 0, len = msg.size();
+            const char *data = msg.data();
+            while (total < len) {
+                ssize_t sent = ::send(sock_fd_, data + total, len - total, 0);
+                if (sent <= 0) {
+                    throw std::runtime_error("CChannel: erro ao enviar dados");
+                }
+                total += sent;
+            }
+        }
+    
+        std::string recv_until(char delimiter = '\n') const {
+            std::string buffer;
+            char ch;
+            while (true) {
+                ssize_t r = ::recv(sock_fd_, &ch, 1, 0);
+                if (r <= 0 || ch == delimiter)
+                    break;
+                buffer.push_back(ch);
+            }
+            return buffer;
+        }
+
+        const std::string& host() const noexcept { return host_; }
+        uint16_t port()          const noexcept { return port_; }
+        int      fd()            const noexcept { return sock_fd_; }
+    
+    private:
+        int         sock_fd_;
+        std::string host_;
+        uint16_t    port_;
+    };
 
 /**
  * @brief Wrapper para std::variant que representa valores em tempo de execução.
@@ -20,96 +137,32 @@
  * Permite armazenar números (double), booleanos, strings ou vetores de ValueWrapper.
  * Os tipos são definidos na ordem: tipos primitivos primeiro, depois containers.
  */
-static std::mutex cout_mutex;
 struct ValueWrapper
 {
-    std::variant<std::monostate, double, bool, std::string, std::vector<ValueWrapper>> data;
+    std::variant<std::monostate, double, bool, std::string, std::vector<ValueWrapper>, std::shared_ptr<CChannelValue>> data;
 
-    // Construtor padrão: inicializa como não inicializado
     ValueWrapper() : data(std::monostate{}) {}
 
-    // Construtor para double
     ValueWrapper(double d) : data(d) {}
 
-    // Construtor para bool
     ValueWrapper(bool b) : data(b) {}
 
-    // Construtor para std::string
     ValueWrapper(const std::string &s) : data(s) {}
 
-    // Construtor para const char* (opcional)
     ValueWrapper(const char *s) : data(std::string(s)) {}
 
-    // Construtor para std::vector<ValueWrapper>
     ValueWrapper(const std::vector<ValueWrapper> &vec) : data(vec) {}
 
-    // Método para verificar se está inicializado
+    ValueWrapper(std::shared_ptr<CChannelValue> cch) : data(cch) {}
+
     bool isInitialized() const
     {
         return !std::holds_alternative<std::monostate>(data);
     }
 
-    // Operador de conversão para facilitar o uso (opcional)
-    operator std::variant<std::monostate, double, bool, std::string, std::vector<ValueWrapper>>() const
+    operator std::variant<std::monostate, double, bool, std::string, std::vector<ValueWrapper>, std::shared_ptr<CChannelValue>>() const
     {
         return data;
-    }
-};
-
-/// Um “ponteiro” para outro ValueWrapper, para
-/// fazer binding por referência sem copiar o vetor.
-struct ValueWrapperPtr {
-    ValueWrapper *ref;  ///< endereço do ValueWrapper real
-
-    // Construtores
-    ValueWrapperPtr() : ref(nullptr) {}
-    explicit ValueWrapperPtr(ValueWrapper *r) : ref(r) {}
-
-    // Copy (mantém a referência)
-    ValueWrapperPtr(const ValueWrapperPtr &o) : ref(o.ref) {}
-    ValueWrapperPtr &operator=(const ValueWrapperPtr &o) {
-        ref = o.ref;
-        return *this;
-    }
-
-    // Encaminha acesso ao variant interno (sem cópia)
-    std::variant<
-        std::monostate,
-        double,
-        bool,
-        std::string,
-        std::vector<ValueWrapper>
-    > &data() {
-        return ref->data;
-    }
-    const std::variant<
-        std::monostate,
-        double,
-        bool,
-        std::string,
-        std::vector<ValueWrapper>
-    > &data() const {
-        return ref->data;
-    }
-
-    // Encaminha demais métodos existentes em ValueWrapper
-    bool isInitialized() const {
-        return ref->isInitialized();
-    }
-
-    operator std::variant<
-        std::monostate,
-        double,
-        bool,
-        std::string,
-        std::vector<ValueWrapper>
-    >() const {
-        return ref->data;
-    }
-
-    // Se em algum ponto seu interpretador precisar de um ValueWrapper&:
-    operator ValueWrapper&() const {
-        return *ref;
     }
 };
 
@@ -129,7 +182,7 @@ private:
      */
     struct Scope
     {
-        std::map<std::string, std::shared_ptr<ValueWrapper>> variables;// Mapeamento de variáveis para seus valores.
+        std::map<std::string, std::shared_ptr<ValueWrapper>> variables; // Mapeamento de variáveis para seus valores.
     };
 
     std::vector<Scope> scopes;                  // Pilha de escopos para gerenciar variáveis.
@@ -200,6 +253,16 @@ private:
      * @param schannel Ponteiro para o SChannel a ser executado.
      */
     void run_server(SChannel *schannel);
+
+    /**
+     * @brief Executa um cliente para um canal de cliente (CChannel).
+     *
+     * Estabelece uma conexão TCP com o servidor e envia mensagens
+     * para o servidor.
+     *
+     * @param cchannel Ponteiro para o CChannel a ser executado.
+     */
+    void run_client(CChannel *cchannel);
 
     /**
      * @brief Converte um ValueWrapper para sua representação em string.

@@ -5,15 +5,20 @@
 #include <typeinfo>
 
 static const std::unordered_map<std::string, std::string> builtin_return = {
-    {"print", "string"},
-    {"len", "num"},
-    {"to_num", "num"},
+    {"print",     "string"},
+    {"len",       "num"},
+    {"to_num",    "num"},
     {"to_string", "string"},
-    {"isnum", "bool"},
-    {"isalpha", "bool"},
-    {"exp", "num"},
-    {"randf", "num"},
-    {"randi", "num"}};
+    {"isnum",     "bool"},
+    {"isalpha",   "bool"},
+    {"exp",       "num"},
+    {"randf",     "num"},
+    {"randi",     "num"},
+    {"input",     "string"},
+    {"send",     "string"},
+    {"close",     "void"},
+};
+
 
 /**
  * @brief Construtor do SemanticAnalyzer.
@@ -604,21 +609,47 @@ void SemanticAnalyzer::visit_Par(Par *node)
 }
 
 /**
- * @brief Analisa uma declaração de canal cliente.
+ * @brief Analisa uma declaração de canal de comunicação.
  *
- * Verifica os tipos de localhost e port.
+ * Verifica se a variável não existe no escopo atual, e registra o nome com tipo
+ * CChannel. Além disso, verifica se o localhost e port são string e num,
+ * respectivamente, e se o valor numérico de port está no intervalo [0,65535].
  *
  * @param node O nó CChannel a ser analisado.
  */
 void SemanticAnalyzer::visit_CChannel(CChannel *node)
 {
     LOG_DEBUG("SemanticAnalyzer: visit_CChannel " << node->getName());
+    
+    auto &currentScope = scope_stack.back();
+    std::string name = node->getName();
+    if (currentScope.find(name) != currentScope.end()) {
+        throw SemanticError("Identificador duplicado: " + name);
+    }
+    currentScope[name] = "CChannel";
+
     if (evaluate(node->getLocalhostNode()) != "string")
         throw SemanticError("localhost deve ser string em CChannel");
     if (evaluate(node->getPortNode()) != "num")
         throw SemanticError("port deve ser num em CChannel");
+
+    if (auto lit = dynamic_cast<Constant*>(node->getLocalhostNode())) {
+        std::string hostVal = lit->getToken().getValue();
+        if (hostVal.empty()) {
+            throw SemanticError("localhost não pode ser string vazia em CChannel");
+        }
+    }
+
+    if (auto lit = dynamic_cast<Constant*>(node->getPortNode())) {
+        double portVal = std::stod(lit->getToken().getValue());
+        if (portVal < 0 || portVal > 65535) {
+            throw SemanticError("port fora do intervalo válido [0,65535] em CChannel");
+        }
+    }
+
     LOG_DEBUG("SemanticAnalyzer: visit_CChannel end");
 }
+
 
 /**
  * @brief Analisa uma declaração de canal de serviço.
