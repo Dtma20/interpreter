@@ -143,10 +143,6 @@ Minipar oferece um conjunto rico de recursos para facilitar o desenvolvimento de
 
   * `exp(x)`, `randf(a, b)`, `randi(a, b)`.
 
-* **Definição de Funções de Alto Nível**
-
-  * Suporte a funções personalizadas como `sigmoid` e `dsigmoid`.
-
 * **Algoritmos Clássicos e Exemplos Avançados**
 
   * Ordenação: `bubble_sort.minipar`, `quick_sort.minipar`.
