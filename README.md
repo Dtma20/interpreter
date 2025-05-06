@@ -137,7 +137,7 @@ Minipar oferece um conjunto rico de recursos para facilitar o desenvolvimento de
 * **Comunicação via Canais TCP**
 
   * Cliente (`c_channel`) e servidor (`s_channel`) para troca de mensagens bidirecionais.
-  * Métodos nativos: `send`, `recv`, `close`.
+  * Métodos nativos: `send`, `close`.
 
 * **Funções Matemáticas e Probabilísticas**
 
