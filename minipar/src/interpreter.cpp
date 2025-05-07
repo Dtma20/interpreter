@@ -401,7 +401,7 @@ ValueWrapper Interpreter::evaluateFunctionCall(Call *call)
                     oss << "[uninitialized]";
                 }
                 else if constexpr (std::is_same_v<T, long double>) {
-                    oss << std::fixed << std::setprecision(0) << val;
+                    oss << std::fixed << std::setprecision(8) << val;
                 }
                 else if constexpr (std::is_same_v<T, bool>) {
                     oss << (val ? "true" : "false");
