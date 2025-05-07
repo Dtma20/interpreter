@@ -11,6 +11,7 @@
 /**
  * @brief Declarações antecipadas das classes da AST.
  */
+
 class Node;
 class Expression;
 class Statement;
