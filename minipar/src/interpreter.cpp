@@ -5,7 +5,6 @@
  * Este arquivo contém a implementação das funções responsáveis pela avaliação de expressões,
  * execução de statements e gerenciamento do ambiente de execução (escopos, funções, canais, etc.).
  */
-#pragma once
 #include <memory>
 #include "../include/interpreter.hpp"
 #include <iostream>
@@ -117,7 +116,7 @@ void Interpreter::pop_scope()
  *
  * O comportamento varia conforme o tipo:
  * - bool: retorna o valor.
- * - double: zero é considerado falso.
+ * - long double: zero é considerado falso.
  * - string: string vazia é falsa.
  */
 bool Interpreter::is_true(const ValueWrapper &value)
@@ -129,11 +128,11 @@ bool Interpreter::is_true(const ValueWrapper &value)
         LOG_DEBUG("Interpreter: Valor é bool, resultado: " << (result ? "true" : "false"));
         return result;
     }
-    else if (std::holds_alternative<double>(value.data))
+    else if (std::holds_alternative<long double>(value.data))
     {
-        double num = std::get<double>(value.data);
+        long double num = std::get<long double>(value.data);
         bool result = num != 0.0;
-        LOG_DEBUG("Interpreter: Valor é double (" << num << "), resultado: " << (result ? "true" : "false"));
+        LOG_DEBUG("Interpreter: Valor é long double (" << num << "), resultado: " << (result ? "true" : "false"));
         return result;
     }
     else if (std::holds_alternative<std::string>(value.data))
@@ -254,8 +253,8 @@ ValueWrapper Interpreter::evaluateConstant(Constant *constant)
 
     if (typeStr == "NUM")
     {
-        double num = std::stod(valueStr);
-        LOG_DEBUG("Interpreter: Convertendo num para double: " << num);
+        long double num = std::stod(valueStr);
+        LOG_DEBUG("Interpreter: Convertendo num para long double: " << num);
         return ValueWrapper(num);
     }
     else if (typeStr == "STRING")
@@ -328,9 +327,9 @@ ValueWrapper Interpreter::evaluateAccess(Access *access)
     ValueWrapper index_val = evaluate(access->getIndex());
 
     if (std::holds_alternative<std::vector<ValueWrapper>>(base_val.data) &&
-        std::holds_alternative<double>(index_val.data))
+        std::holds_alternative<long double>(index_val.data))
     {
-        int index = static_cast<int>(std::get<double>(index_val.data));
+        int index = static_cast<int>(std::get<long double>(index_val.data));
         auto &arr = std::get<std::vector<ValueWrapper>>(base_val.data);
         if (index >= 0 && index < static_cast<int>(arr.size()))
         {
@@ -342,10 +341,10 @@ ValueWrapper Interpreter::evaluateAccess(Access *access)
     }
 
     else if (std::holds_alternative<std::string>(base_val.data) &&
-             std::holds_alternative<double>(index_val.data))
+             std::holds_alternative<long double>(index_val.data))
     {
         std::string str = std::get<std::string>(base_val.data);
-        int index = static_cast<int>(std::get<double>(index_val.data));
+        int index = static_cast<int>(std::get<long double>(index_val.data));
         LOG_DEBUG("Interpreter: Acesso a string '" << str << "' no índice: " << index);
         if (index >= 0 && index < static_cast<int>(str.length()))
         {
@@ -401,8 +400,8 @@ ValueWrapper Interpreter::evaluateFunctionCall(Call *call)
                 if constexpr (std::is_same_v<T, std::monostate>) {
                     oss << "[uninitialized]";
                 }
-                else if constexpr (std::is_same_v<T, double>) {
-                    oss << val;
+                else if constexpr (std::is_same_v<T, long double>) {
+                    oss << std::fixed << std::setprecision(0) << val;
                 }
                 else if constexpr (std::is_same_v<T, bool>) {
                     oss << (val ? "true" : "false");
@@ -415,7 +414,7 @@ ValueWrapper Interpreter::evaluateFunctionCall(Call *call)
                     bool first = true;
                     for (const auto &elem : val) {
                         if (!first) oss << ", ";
-                        oss << elem;
+                        oss << std::fixed << std::setprecision(0) << elem;
                         first = false;
                     }
                     oss << "]";
@@ -440,13 +439,13 @@ ValueWrapper Interpreter::evaluateFunctionCall(Call *call)
         ValueWrapper arg = evaluate(call->getArgs()[0].get());
         if (std::holds_alternative<std::string>(arg.data))
         {
-            double length = static_cast<double>(std::get<std::string>(arg.data).length());
+            long double length = static_cast<long double>(std::get<std::string>(arg.data).length());
             LOG_DEBUG("Interpreter: len retornando: " << length);
             return ValueWrapper(length);
         }
         else if (std::holds_alternative<std::vector<ValueWrapper>>(arg.data))
         {
-            double length = static_cast<double>(std::get<std::vector<ValueWrapper>>(arg.data).size());
+            long double length = static_cast<long double>(std::get<std::vector<ValueWrapper>>(arg.data).size());
             LOG_DEBUG("Interpreter: len retornando: " << length);
             return ValueWrapper(length);
         }
@@ -463,7 +462,7 @@ ValueWrapper Interpreter::evaluateFunctionCall(Call *call)
         ValueWrapper arg = evaluate(call->getArgs()[0].get());
         if (std::holds_alternative<std::string>(arg.data))
         {
-            double num = std::stod(std::get<std::string>(arg.data));
+            long double num = std::stod(std::get<std::string>(arg.data));
             LOG_DEBUG("Interpreter: to_num retornando: " << num);
             return ValueWrapper(num);
         }
@@ -526,10 +525,10 @@ ValueWrapper Interpreter::evaluateFunctionCall(Call *call)
             throw RunTimeError("exp requer um argumento válido");
         }
         ValueWrapper arg = evaluate(call->getArgs()[0].get());
-        if (std::holds_alternative<double>(arg.data))
+        if (std::holds_alternative<long double>(arg.data))
         {
-            double input = std::get<double>(arg.data);
-            double result = std::exp(input);
+            long double input = std::get<long double>(arg.data);
+            long double result = std::exp(input);
             LOG_DEBUG("Interpreter: exp retornando: " << result);
             return ValueWrapper(result);
         }
@@ -545,17 +544,17 @@ ValueWrapper Interpreter::evaluateFunctionCall(Call *call)
         size_t numArgs = call->getArgs().size();
         if (numArgs == 0)
         {
-            double random_val = static_cast<double>(rand()) / static_cast<double>(RAND_MAX);
+            long double random_val = static_cast<long double>(rand()) / static_cast<long double>(RAND_MAX);
             LOG_DEBUG("Interpreter: random sem argumentos retornando: " << random_val);
             return ValueWrapper(random_val);
         }
         else if (numArgs == 1)
         {
             ValueWrapper arg = evaluate(call->getArgs()[0].get());
-            if (std::holds_alternative<double>(arg.data))
+            if (std::holds_alternative<long double>(arg.data))
             {
-                double max_val = std::get<double>(arg.data);
-                double random_val = (static_cast<double>(rand()) / static_cast<double>(RAND_MAX)) * max_val;
+                long double max_val = std::get<long double>(arg.data);
+                long double random_val = (static_cast<long double>(rand()) / static_cast<long double>(RAND_MAX)) * max_val;
                 LOG_DEBUG("Interpreter: random com 1 argumento retornando: " << random_val);
                 return ValueWrapper(random_val);
             }
@@ -569,11 +568,11 @@ ValueWrapper Interpreter::evaluateFunctionCall(Call *call)
         {
             ValueWrapper arg1 = evaluate(call->getArgs()[0].get());
             ValueWrapper arg2 = evaluate(call->getArgs()[1].get());
-            if (std::holds_alternative<double>(arg1.data) && std::holds_alternative<double>(arg2.data))
+            if (std::holds_alternative<long double>(arg1.data) && std::holds_alternative<long double>(arg2.data))
             {
-                double min_val = std::get<double>(arg1.data);
-                double max_val = std::get<double>(arg2.data);
-                double random_val = min_val + (static_cast<double>(rand()) / static_cast<double>(RAND_MAX)) * (max_val - min_val);
+                long double min_val = std::get<long double>(arg1.data);
+                long double max_val = std::get<long double>(arg2.data);
+                long double random_val = min_val + (static_cast<long double>(rand()) / static_cast<long double>(RAND_MAX)) * (max_val - min_val);
                 LOG_DEBUG("Interpreter: random com 2 argumentos retornando: " << random_val);
                 return ValueWrapper(random_val);
             }
@@ -597,35 +596,35 @@ ValueWrapper Interpreter::evaluateFunctionCall(Call *call)
         {
             int random_int = rand() % 2;
             LOG_DEBUG("Interpreter: randi() retornando: " << random_int);
-            return ValueWrapper(static_cast<double>(random_int));
+            return ValueWrapper(static_cast<long double>(random_int));
         }
         else if (numArgs == 1)
         {
             ValueWrapper arg = evaluate(call->getArgs()[0].get());
-            if (!std::holds_alternative<double>(arg.data))
+            if (!std::holds_alternative<long double>(arg.data))
                 throw RunTimeError("randi requer um número como argumento");
-            int max_val = static_cast<int>(std::get<double>(arg.data));
+            int max_val = static_cast<int>(std::get<long double>(arg.data));
             if (max_val < 0)
                 throw RunTimeError("randi: valor máximo deve ser ≥ 0");
             int random_int = rand() % (max_val + 1);
             LOG_DEBUG("Interpreter: randi(max) retornando: " << random_int);
-            return ValueWrapper(static_cast<double>(random_int));
+            return ValueWrapper(static_cast<long double>(random_int));
         }
         else if (numArgs == 2)
         {
             auto arg1 = evaluate(call->getArgs()[0].get());
             auto arg2 = evaluate(call->getArgs()[1].get());
-            if (!std::holds_alternative<double>(arg1.data) ||
-                !std::holds_alternative<double>(arg2.data))
+            if (!std::holds_alternative<long double>(arg1.data) ||
+                !std::holds_alternative<long double>(arg2.data))
                 throw RunTimeError("randi requer números como argumentos");
-            int min_val = static_cast<int>(std::get<double>(arg1.data));
-            int max_val = static_cast<int>(std::get<double>(arg2.data));
+            int min_val = static_cast<int>(std::get<long double>(arg1.data));
+            int max_val = static_cast<int>(std::get<long double>(arg2.data));
             if (max_val < min_val)
                 throw RunTimeError("randi: max < min");
             int span = max_val - min_val + 1;
             int random_int = rand() % span + min_val;
             LOG_DEBUG("Interpreter: randi(min,max) retornando: " << random_int);
-            return ValueWrapper(static_cast<double>(random_int));
+            return ValueWrapper(static_cast<long double>(random_int));
         }
         else
         {
@@ -725,10 +724,10 @@ ValueWrapper Interpreter::evaluateRelational(Relational *relational)
     LOG_DEBUG("Interpreter: Operação relacional: " << convert_value_to_string(left_value)
                                                    << " " << op << " " << convert_value_to_string(right_value));
 
-    if (std::holds_alternative<double>(left_value.data) && std::holds_alternative<double>(right_value.data))
+    if (std::holds_alternative<long double>(left_value.data) && std::holds_alternative<long double>(right_value.data))
     {
-        double left_num = std::get<double>(left_value.data);
-        double right_num = std::get<double>(right_value.data);
+        long double left_num = std::get<long double>(left_value.data);
+        long double right_num = std::get<long double>(right_value.data);
         if (op == "<")
             return ValueWrapper(left_num < right_num);
         if (op == ">")
@@ -781,10 +780,10 @@ ValueWrapper Interpreter::evaluateArithmetic(Arithmetic *arithmetic)
     LOG_DEBUG("Interpreter: Operação aritmética: " << convert_value_to_string(left_value)
                                                    << " " << op << " " << convert_value_to_string(right_value));
 
-    if (std::holds_alternative<double>(left_value.data) && std::holds_alternative<double>(right_value.data))
+    if (std::holds_alternative<long double>(left_value.data) && std::holds_alternative<long double>(right_value.data))
     {
-        double left_num = std::get<double>(left_value.data);
-        double right_num = std::get<double>(right_value.data);
+        long double left_num = std::get<long double>(left_value.data);
+        long double right_num = std::get<long double>(right_value.data);
         if (op == "+")
             return ValueWrapper(left_num + right_num);
         if (op == "-")
@@ -832,7 +831,6 @@ ValueWrapper Interpreter::evaluateUnary(Unary *unary)
         Expression *operand = unary->getExpr();
         ValueWrapper result;
 
-        // Caso 1: Operando é um ID (variável simples)
         if (auto *id = dynamic_cast<ID *>(operand))
         {
             std::string var_name = id->getToken().getValue();
@@ -850,12 +848,12 @@ ValueWrapper Interpreter::evaluateUnary(Unary *unary)
             {
                 throw RunTimeError("Variável não definida: " + var_name);
             }
-            if (!std::holds_alternative<double>(var_ptr->data))
+            if (!std::holds_alternative<long double>(var_ptr->data))
             {
                 throw RunTimeError("Operadores ++ e -- requerem uma variável numérica");
             }
-            double &value = std::get<double>(var_ptr->data);
-            if (unary->isPostfix()) // x++ ou x--
+            long double &value = std::get<long double>(var_ptr->data);
+            if (unary->isPostfix())
             {
                 result = ValueWrapper(value);
                 if (op == "INC")
@@ -863,7 +861,7 @@ ValueWrapper Interpreter::evaluateUnary(Unary *unary)
                 else
                     value -= 1.0;
             }
-            else // ++x ou --x
+            else 
             {
                 if (op == "INC")
                     value += 1.0;
@@ -874,7 +872,6 @@ ValueWrapper Interpreter::evaluateUnary(Unary *unary)
             LOG_DEBUG("Interpreter: " << var_name << " " << (unary->isPostfix() ? "pós" : "pré") << "-fixado: " << value);
             return result;
         }
-        // Caso 2: Operando é um Access (posição de array)
         else if (auto *access = dynamic_cast<Access *>(operand))
         {
             if (!access->getBase() || !access->getIndex())
@@ -883,11 +880,11 @@ ValueWrapper Interpreter::evaluateUnary(Unary *unary)
             }
             std::string base_name = access->getBase()->getToken().getValue();
             ValueWrapper index_val = evaluate(access->getIndex());
-            if (!std::holds_alternative<double>(index_val.data))
+            if (!std::holds_alternative<long double>(index_val.data))
             {
                 throw RunTimeError("Índice deve ser um número");
             }
-            int index = static_cast<int>(std::get<double>(index_val.data));
+            int index = static_cast<int>(std::get<long double>(index_val.data));
 
             ValueWrapper *base_ptr = nullptr;
             for (auto it = scopes.rbegin(); it != scopes.rend(); ++it)
@@ -912,11 +909,11 @@ ValueWrapper Interpreter::evaluateUnary(Unary *unary)
             {
                 throw RunTimeError("Índice " + std::to_string(index) + " fora do intervalo para " + base_name);
             }
-            if (!std::holds_alternative<double>(arr[index].data))
+            if (!std::holds_alternative<long double>(arr[index].data))
             {
                 throw RunTimeError("Elemento no índice " + std::to_string(index) + " não é numérico");
             }
-            double &value = std::get<double>(arr[index].data);
+            long double &value = std::get<long double>(arr[index].data);
             if (unary->isPostfix())
             {
                 result = ValueWrapper(value);
@@ -941,9 +938,9 @@ ValueWrapper Interpreter::evaluateUnary(Unary *unary)
     else if (op == "-")
     {
         ValueWrapper value = evaluate(unary->getExpr());
-        if (std::holds_alternative<double>(value.data))
+        if (std::holds_alternative<long double>(value.data))
         {
-            return ValueWrapper(-std::get<double>(value.data));
+            return ValueWrapper(-std::get<long double>(value.data));
         }
         throw RunTimeError("Operador unário '-' aplicado a tipo não numérico");
     }
@@ -1089,7 +1086,7 @@ void Interpreter::run_server(SChannel *schannel)
     ValueWrapper desc_val = evaluate(schannel->getDescription());
 
     std::string localhost = std::get<std::string>(localhost_val.data);
-    int port = static_cast<int>(std::get<double>(port_val.data));
+    int port = static_cast<int>(std::get<long double>(port_val.data));
     std::string description = std::get<std::string>(desc_val.data);
 
     int server_fd, client_fd;
@@ -1165,7 +1162,7 @@ void Interpreter::run_client(CChannel *cchannel)
     ValueWrapper port_val = evaluate(cchannel->getPortNode());
 
     std::string host = std::get<std::string>(localhost_val.data);
-    int port = static_cast<int>(std::get<double>(port_val.data));
+    int port = static_cast<int>(std::get<long double>(port_val.data));
 
     struct sockaddr_in serv_addr;
     char buffer[1024];
@@ -1237,7 +1234,7 @@ std::string Interpreter::convert_value_to_string(const ValueWrapper &value)
     return std::visit([this](auto &&val) -> std::string
                       {
          using T = std::decay_t<decltype(val)>;
-         if constexpr (std::is_same_v<T, double>)
+         if constexpr (std::is_same_v<T, long double>)
          {
              // Se o número for inteiro, remove a parte decimal
              if (std::fabs(val - std::round(val)) < 1e-9)
@@ -1385,9 +1382,9 @@ void Interpreter::execute_stmt(Node *stmt)
             while (auto *acc = dynamic_cast<Access *>(current))
             {
                 ValueWrapper idx_val = evaluate(acc->getIndex());
-                if (!std::holds_alternative<double>(idx_val.data))
+                if (!std::holds_alternative<long double>(idx_val.data))
                     throw RunTimeError("Índice deve ser um número");
-                indices.push_back(static_cast<int>(std::get<double>(idx_val.data)));
+                indices.push_back(static_cast<int>(std::get<long double>(idx_val.data)));
                 chain.push_back(acc);
                 current = acc->getBase();
             }
@@ -1558,7 +1555,7 @@ void Interpreter::execute_stmt(Node *stmt)
         ValueWrapper host = evaluate(cch->getLocalhostNode());
         ValueWrapper port = evaluate(cch->getPortNode());
         std::string h = std::get<std::string>(host.data);
-        int p = static_cast<int>(std::get<double>(port.data));
+        int p = static_cast<int>(std::get<long double>(port.data));
 
         // 1) Cria o objeto CChannelValue (precisa do construtor adequado)
         auto channelVal = std::make_shared<CChannelValue>(h, p);
@@ -1580,9 +1577,9 @@ void Interpreter::execute_stmt(Node *stmt)
         for (auto &dim_expr : arr_decl->getDimensions())
         {
             ValueWrapper dv = evaluate(dim_expr.get());
-            if (!std::holds_alternative<double>(dv.data))
+            if (!std::holds_alternative<long double>(dv.data))
                 throw RunTimeError("Tamanho do array '" + var_name + "' deve ser número");
-            int sz = static_cast<int>(std::get<double>(dv.data));
+            int sz = static_cast<int>(std::get<long double>(dv.data));
             if (sz < 0)
                 throw RunTimeError("Tamanho do array '" + var_name + "' não pode ser negativo");
             dims.push_back(sz);
@@ -1591,7 +1588,7 @@ void Interpreter::execute_stmt(Node *stmt)
             [&](const std::vector<int> &d, size_t lvl) -> ValueWrapper
         {
             if (lvl == d.size())
-                return ValueWrapper(0.0);
+                return ValueWrapper(0.0L);
             std::vector<ValueWrapper> vec(d[lvl]);
             for (auto &e : vec)
                 e = make_arr(d, lvl + 1);
@@ -1679,7 +1676,7 @@ std::ostream &operator<<(std::ostream &os, const ValueWrapper &v)
          if constexpr (std::is_same_v<T, std::monostate>) {
              os << "[uninitialized]";
          }
-         else if constexpr (std::is_same_v<T, double>) {
+         else if constexpr (std::is_same_v<T, long double>) {
              os << val;
          }
          else if constexpr (std::is_same_v<T, bool>) {

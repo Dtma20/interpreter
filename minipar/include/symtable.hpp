@@ -1,10 +1,11 @@
 #ifndef SYMTABLE_HPP
 #define SYMTABLE_HPP
 
+#pragma once
 #include <unordered_map>
 #include <string>
 #include <any>
-#include <memory> // Para std::shared_ptr
+#include <memory>
 
 /**
  * @brief Representa um símbolo na tabela de símbolos.

@@ -1,6 +1,7 @@
 #ifndef PARSER_HPP
 #define PARSER_HPP
 
+#pragma once
 #include <memory>
 #include <vector>
 #include <unordered_set>

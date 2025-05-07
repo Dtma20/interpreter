@@ -1,6 +1,7 @@
 #ifndef AST_HPP
 #define AST_HPP
 
+#pragma once
 #include <memory>
 #include <string>
 #include <vector>

@@ -1,6 +1,7 @@
 #ifndef INTERPRETER_HPP
 #define INTERPRETER_HPP
 
+#pragma once
 #include <map>
 #include <mutex>
 #include <string>
@@ -134,17 +135,17 @@ class CChannelValue {
 /**
  * @brief Wrapper para std::variant que representa valores em tempo de execução.
  *
- * Permite armazenar números (double), booleanos, strings ou vetores de ValueWrapper.
+ * Permite armazenar números (long double), booleanos, strings ou vetores de ValueWrapper.
  * Os tipos são definidos na ordem: tipos primitivos primeiro, depois containers.
  */
 struct ValueWrapper
 {
     
-    std::variant<std::monostate, double, bool, std::string, std::vector<ValueWrapper>, std::shared_ptr<CChannelValue>> data;
+    std::variant<std::monostate, long double, bool, std::string, std::vector<ValueWrapper>, std::shared_ptr<CChannelValue>> data;
 
     ValueWrapper() : data(std::monostate{}) {}
 
-    ValueWrapper(double d) : data(d) {}
+    ValueWrapper(long double d) : data(d) {}
 
     ValueWrapper(bool b) : data(b) {}
 
@@ -161,7 +162,7 @@ struct ValueWrapper
         return !std::holds_alternative<std::monostate>(data);
     }
 
-    operator std::variant<std::monostate, double, bool, std::string, std::vector<ValueWrapper>, std::shared_ptr<CChannelValue>>() const
+    operator std::variant<std::monostate, long double, bool, std::string, std::vector<ValueWrapper>, std::shared_ptr<CChannelValue>>() const
     {
         return data;
     }

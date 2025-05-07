@@ -1,6 +1,7 @@
 #ifndef ERROR_HPP
 #define ERROR_HPP
 
+#pragma once
 #include <stdexcept>
 #include <string>
 

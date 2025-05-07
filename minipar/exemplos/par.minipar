@@ -1,29 +1,22 @@
-func fat(n: num) -> array {
-	f: array[n + 1]
-	f[0] = 1
-	f[1] = 1
-
-	for(i: num = 2; i <= n; i++) {
-		f[i] = f[i - 1] * i
-	}
-	return f
-}
-
-func fib(n: num) -> array {
-	f: array[n + 1]
-	f[0] = 0
-	f[1] = 1
-	for(i: num = 2; i <= n; i++) {
-		f[i] = f[i - 1] + f[i - 2]
-	}
-	return f
-}
-
 n: num = to_num(input("Digite um número: "))
 
-arr1: array[n + 1] = fib(n)
-arr2: array[n + 1] = fat(n)
+fat: array[n + 1]
+fat[0] = 1
+fat[1] = 1
+
+for(i: num = 2; i <= n; i++) {
+	fat[i] = fat[i - 1] * i
+}
+
+fib: array[n + 1]
+fib[0] = 0
+fib[1] = 1
+for(i: num = 2; i <= n; i++) {
+	fib[i] = fib[i - 1] + fib[i - 2]
+}
+
 par {
-	print(arr1, "\n")
-	print(arr2, "\n")
+	print(fib, "\n")
+	print(fat, "\n")
+	print("Hello, Wolrd!!\n")
 }
