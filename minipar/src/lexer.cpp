@@ -110,7 +110,7 @@ std::vector<std::pair<Token, int>> Lexer::scan()
                 continue;
             }
 
-            std::string kind = "";
+            std::string type = "";
             std::string value = match.str();
             LOG_DEBUG("Lexer: Processando match, valor bruto: " << value);
 
@@ -119,14 +119,14 @@ std::vector<std::pair<Token, int>> Lexer::scan()
             {
                 if (match[i].matched)
                 {
-                    kind = TOKEN_PATTERNS[i - 1].first;
-                    LOG_DEBUG("Lexer: Tipo identificado: " << kind);
+                    type = TOKEN_PATTERNS[i - 1].first;
+                    LOG_DEBUG("Lexer: Tipo identificado: " << type);
                     break;
                 }
             }
 
             // Se o tipo não foi identificado, exibe um aviso e continua
-            if (kind.empty())
+            if (type.empty())
             {
                 std::cerr << "Aviso: Tipo de token não identificado para '" << value << "'\n";
                 LOG_DEBUG("Lexer: Tipo não identificado para valor: " << value);
@@ -134,21 +134,21 @@ std::vector<std::pair<Token, int>> Lexer::scan()
             }
 
             // Processa tokens especiais: ignora espaços em branco e atualiza o contador de linhas
-            if (kind == "WHITESPACE")
+            if (type == "WHITESPACE")
             {
                 LOG_DEBUG("Lexer: Ignorando WHITESPACE");
                 continue;
             }
-            else if (kind == "NEWLINE")
+            else if (type == "NEWLINE")
             {
                 line++;
                 LOG_DEBUG("Lexer: NEWLINE detectado, linha atual: " << line);
                 continue;
             }
             // Ignora comentários e, para comentários multi-linha, atualiza o contador de linhas
-            else if (kind == "SCOMMENT" || kind == "MCOMMENT")
+            else if (type == "SCOMMENT" || type == "MCOMMENT")
             {
-                if (kind == "MCOMMENT")
+                if (type == "MCOMMENT")
                 {
                     line += std::count(value.begin(), value.end(), '\n');
                     LOG_DEBUG("Lexer: MCOMMENT detectado, linhas incrementadas para: " << line);
@@ -160,14 +160,14 @@ std::vector<std::pair<Token, int>> Lexer::scan()
                 continue;
             }
             // Se o token for do tipo NAME, verifica se ele é uma palavra-chave usando token_table
-            else if (kind == "NAME")
+            else if (type == "NAME")
             {
                 auto it = token_table.find(value);
-                kind = (it != token_table.end()) ? it->second : "ID";
-                LOG_DEBUG("Lexer: NAME ajustado para: " << kind);
+                type = (it != token_table.end()) ? it->second : "ID";
+                LOG_DEBUG("Lexer: NAME ajustado para: " << type);
             }
             // Para tokens do tipo STRING, remove as aspas delimitadoras
-            else if (kind == "STRING")
+            else if (type == "STRING")
             {
                 if (value.size() >= 2)
                 {
@@ -181,15 +181,15 @@ std::vector<std::pair<Token, int>> Lexer::scan()
                 }
             }
             // Para tokens do tipo OTHER, utiliza o próprio valor como tipo
-            else if (kind == "OTHER")
+            else if (type == "OTHER")
             {
-                kind = value;
-                LOG_DEBUG("Lexer: OTHER ajustado para: " << kind);
+                type = value;
+                LOG_DEBUG("Lexer: OTHER ajustado para: " << type);
             }
 
             // Cria o token com o tipo identificado, valor processado e linha corrente, adicionando-o ao vetor
-            tokens.emplace_back(Token(kind, value), line);
-            LOG_DEBUG("Lexer: Token gerado: {tag: " << kind << ", value: " << value << ", line: " << line << "}");
+            tokens.emplace_back(Token(type, value), line);
+            LOG_DEBUG("Lexer: Token gerado: {tag: " << type << ", value: " << value << ", line: " << line << "}");
         }
     }
     catch (const std::regex_error &e)

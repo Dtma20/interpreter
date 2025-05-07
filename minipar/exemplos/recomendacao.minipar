@@ -8,63 +8,42 @@ roupas: array[4] = ["Camisa", "Jeans", "Jaqueta", "Sapatos"]
 eletro: array[4] = ["Geladeira", "Micro-ondas", "Máquina de lavar", "Ar condicionado"]
 livros: array[4] = ["Ficção", "Não-ficção", "Ficção científica", "Fantasia"]
 
-all_products: array[16] = [
-    eletronicos[0], eletronicos[1], eletronicos[2], eletronicos[3],
-    roupas[0], roupas[1], roupas[2], roupas[3],
-    eletro[0], eletro[1], eletro[2], eletro[3],
-    livros[0], livros[1], livros[2], livros[3]
-]
-
-# print("Todos os produtos: ", all_products, "\n")
-
-encoded_history: array[16]
-i: num = 0
-while (i < 16) {
-    found: num = 0
-    j: num = 0
-    while (j < 4) {
-        if (all_products[i] == user_purchase_history[j]) {
-            found = 1
-        }
-        j++
-    }
-    encoded_history[i] = found
-    # print("Produto:", all_products[i], " - Comprado anteriormente: ", found, "\n")
-    i++
-}
-
 input_size: num = 16
 hidden_size: num = 10
 output_size: num = 16
 
-hidden_biases: array[10]
-output_biases: array[16]
-hidden_weights: array[10][16]
-output_weights: array[16][10]
+all_products: array[output_size] = [eletronicos[0], eletronicos[1], eletronicos[2], eletronicos[3], roupas[0], roupas[1], roupas[2], roupas[3],
+                                    eletro[0], eletro[1], eletro[2], eletro[3], livros[0], livros[1], livros[2], livros[3]]
 
-i = 0
-while (i < hidden_size) {
-    hidden_biases[i] = 0.5
-    j: num = 0
-    while (j < input_size) {
-        hidden_weights[i][j] = 0.5
-        j++
+encoded_history: array[output_size]
+
+for(i: num = 0; i < 16; i++) {
+    f: num = 0
+    for(j: num = 0; j < 4; j++) {
+        if (all_products[i] == user_purchase_history[j]) {
+            f = 1
+        }
     }
-    # print("Bias oculto[", i, "]: ", hidden_biases[i], "\n")
-    i++
+    encoded_history[i] = f
 }
 
-i = 0
-while (i < output_size) {
-    output_biases[i] = 0.5
-    output_weights[i]
-    j: num = 0
-    while (j < hidden_size) {
-        output_weights[i][j] = 0.5
-        j++
+hidden_biases: array[hidden_size]
+output_biases: array[output_size]
+hidden_weights: array[hidden_size][input_size]
+output_weights: array[output_size][hidden_size]
+
+for(i: num = 0; i < hidden_size; i++) {
+    hidden_biases[i] = 0.5
+    for(j: num = 0; j < input_size; j++) {
+        hidden_weights[i][j] = 0.5
     }
-    # print("Bias saída[", i, "]: ", output_biases[i], "\n")
-    i++
+}
+
+for(i: num = 0; i < output_size; i++) {
+    output_biases[i] = 0.5
+    for(j: num = 0; j < hidden_size; j++) {
+        output_weights[i][j] = 0.5
+    }
 }
 
 func sigmoid(x: num) -> num {
@@ -72,44 +51,31 @@ func sigmoid(x: num) -> num {
 }
 
 func forward_pass(x: array) -> array {
-    hidden_out: array[10]
-    i: num = 0
-    while (i < hidden_size) {
+    hidden_out: array[hidden_size]
+    for(i: num = 0; i < hidden_size; i++) {
         sum: num = hidden_biases[i]
-        j: num = 0
-        while (j < input_size) {
+        for(j: num = 0; j < input_size; j++) {
             sum = sum + x[j] * hidden_weights[i][j]
-            j++
         }
         hidden_out[i] = sigmoid(sum)
-        # print("Saída da camada oculta[", i, "]: ", hidden_out[i], "\n")
-        i++
     }
 
-    output: array[16]
-    i = 0
-    while (i < output_size) {
+    output: array[output_size]
+    for(i: num = 0; i < output_size; i++) {
         sum: num = output_biases[i]
-        j: num = 0
-        while (j < hidden_size) {
+        for(j: num = 0; j < hidden_size; j++) {
             sum = sum + hidden_out[j] * output_weights[i][j]
-            j++
         }
         output[i] = sigmoid(sum)
-        # print("Ativação da saída[", i, "]: ", output[i], "\n")
-        i++
     }
     return output
 }
 
-predicted_output: array[16] = forward_pass(encoded_history)
-# print(predicted_output, "\n")
+predicted_output: array[output_size] = forward_pass(encoded_history)
+print("Produtos recomendados para você: \n")
 
-# print("Produtos recomendados para você: \n")
-i = 0
-while (i < 16) {
+for(i: num = 0; i < output_size; i++) {
     if (predicted_output[i] > 0.5 && encoded_history[i] == 0) {
         print("Recomendado: ", all_products[i], "\n")
     }
-    i++
 }

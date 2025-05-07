@@ -1,11 +1,12 @@
 #include "../include/ast.hpp"
 
 /**
- * @brief Representa uma expressão na árvore sintática (AST).
+ * @brief Construtor para uma expressão.
  *
- * A classe Expression é a classe base para todas as expressões.
- * Ela armazena o tipo da expressão (por exemplo, "NUM", "STRING", etc.)
- * e o token associado (que contém informações como valor e posição).
+ * Inicializa uma expressão com seu tipo e token associado.
+ *
+ * @param type Tipo da expressão.
+ * @param token Token associado à expressão.
  */
 Expression::Expression(const std::string &type, const Token &token)
     : type(type), token(token) {}
