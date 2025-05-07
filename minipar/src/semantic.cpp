@@ -19,7 +19,6 @@ static const std::unordered_map<std::string, std::string> builtin_return = {
     {"close",     "void"},
 };
 
-
 /**
  * @brief Construtor do SemanticAnalyzer.
  *

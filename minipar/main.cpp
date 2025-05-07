@@ -1,10 +1,10 @@
 #include <iostream>
 #include <fstream>
 #include "./include/lexer.hpp"
+#include "./include/error.hpp"
 #include "./include/parser.hpp"
 #include "./include/semantic.hpp"
 #include "./include/interpreter.hpp"
-#include "./include/error.hpp"
 
 int main(int argc, char* argv[]) {
     

@@ -396,29 +396,41 @@ ValueWrapper Interpreter::evaluateFunctionCall(Call *call)
 
             std::visit([&oss](auto &&val)
                        {
-                using T = std::decay_t<decltype(val)>;
-                if constexpr (std::is_same_v<T, std::monostate>) {
-                    oss << "[uninitialized]";
-                }
-                else if constexpr (std::is_same_v<T, long double>) {
-                    oss << std::fixed << std::setprecision(8) << val;
-                }
-                else if constexpr (std::is_same_v<T, bool>) {
-                    oss << (val ? "true" : "false");
-                }
-                else if constexpr (std::is_same_v<T, std::string>) {
-                    oss << val;
-                }
-                else if constexpr (std::is_same_v<T, std::vector<ValueWrapper>>) {
-                    oss << "[";
-                    bool first = true;
-                    for (const auto &elem : val) {
-                        if (!first) oss << ", ";
-                        oss << std::fixed << std::setprecision(0) << elem;
-                        first = false;
-                    }
-                    oss << "]";
-                } }, value.data);
+    using T = std::decay_t<decltype(val)>;
+    if constexpr (std::is_same_v<T, std::monostate>) {
+        oss << "[uninitialized]";
+    }
+    else if constexpr (std::is_same_v<T, long double>) {
+        constexpr long double epsilon = 1e-9;
+
+        std::ios_base::fmtflags originalFlags = oss.flags();
+        std::streamsize originalPrecision = oss.precision();
+
+        if (std::abs(val - std::trunc(val)) > epsilon) {
+            oss << std::fixed << std::setprecision(8) << val;
+        } else {
+             oss << std::noshowpoint << val;
+        }
+
+        oss.flags(originalFlags);
+        oss.precision(originalPrecision);
+    }
+    else if constexpr (std::is_same_v<T, bool>) {
+        oss << (val ? "true" : "false");
+    }
+    else if constexpr (std::is_same_v<T, std::string>) {
+        oss << val;
+    }
+    else if constexpr (std::is_same_v<T, std::vector<ValueWrapper>>) {
+        oss << "[";
+        bool first = true;
+        for (const auto &elem : val) {
+            if (!first) oss << ", ";
+             oss << std::fixed << std::setprecision(0) << elem;
+            first = false;
+        }
+        oss << "]";
+    } }, value.data);
         }
 
         {
@@ -861,7 +873,7 @@ ValueWrapper Interpreter::evaluateUnary(Unary *unary)
                 else
                     value -= 1.0;
             }
-            else 
+            else
             {
                 if (op == "INC")
                     value += 1.0;

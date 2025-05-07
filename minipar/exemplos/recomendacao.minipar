@@ -96,14 +96,14 @@ func forward_pass(x: array) -> array {
             j++
         }
         output[i] = sigmoid(sum)
-        print("Ativação da saída[", i, "]: ", output[i], "\n")
+        # print("Ativação da saída[", i, "]: ", output[i], "\n")
         i++
     }
     return output
 }
 
 predicted_output: array[16] = forward_pass(encoded_history)
-print(predicted_output, "\n")
+# print(predicted_output, "\n")
 
 # print("Produtos recomendados para você: \n")
 i = 0
