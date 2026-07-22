@@ -1,0 +1,24 @@
+# Compilation artifacts
+*.o
+*.obj
+minipar
+minipar.exe
+
+# Debug
+*.dSYM/
+*.pdb
+
+# IDE / Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Documentation generated
+docs/html/
+docs/latex/

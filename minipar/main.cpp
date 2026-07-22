@@ -4,7 +4,7 @@
 #include "./include/error.hpp"
 #include "./include/parser.hpp"
 #include "./include/semantic.hpp"
-#include "./include/interpreter.hpp"
+#include "./include/interpreter/interpreter_core.hpp"
 
 int main(int argc, char* argv[]) {
     
