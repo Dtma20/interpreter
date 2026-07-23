@@ -17,10 +17,10 @@
 #include "../../include/debug.hpp"
 
 // BLD3: thread-local seeded generator (thread-safe, não-determinístico)
-thread_local std::mt19937 rng([]() {
+thread_local std::mt19937 rng([]()
+                              {
     std::random_device rd;
-    return rd();
-}());
+    return rd(); }());
 
 ValueWrapper Interpreter::builtin_print(Call *call)
 {
@@ -114,9 +114,16 @@ ValueWrapper Interpreter::builtin_to_num(Call *call)
     ValueWrapper arg = evaluate(call->getArgs()[0].get());
     if (std::holds_alternative<std::string>(arg.data))
     {
-        long double num = std::stod(std::get<std::string>(arg.data));
-        LOG_DEBUG("Interpreter: to_num retornando: " << num);
-        return ValueWrapper(num);
+        try
+        {
+            long double num = std::stod(std::get<std::string>(arg.data));
+            LOG_DEBUG("Interpreter: to_num retornando: " << num);
+            return ValueWrapper(num);
+        }
+        catch (const std::exception &e)
+        {
+            throw RunTimeError(std::string("to_num: conversão inválida — ") + e.what());
+        }
     }
     LOG_DEBUG("Interpreter: Erro, to_num requer string");
     throw RunTimeError("to_num requer uma string como argumento");
@@ -147,7 +154,8 @@ ValueWrapper Interpreter::builtin_isnum(Call *call)
     {
         std::string str = std::get<std::string>(arg.data);
         bool result = std::all_of(str.begin(), str.end(),
-            [](unsigned char c) { return std::isdigit(c); });
+                                  [](unsigned char c)
+                                  { return std::isdigit(c); });
         LOG_DEBUG("Interpreter: isnum retornando: " << (result ? "true" : "false"));
         return ValueWrapper(result);
     }
@@ -167,7 +175,8 @@ ValueWrapper Interpreter::builtin_isalpha(Call *call)
     {
         std::string str = std::get<std::string>(arg.data);
         bool result = std::all_of(str.begin(), str.end(),
-            [](unsigned char c) { return std::isalpha(c); });
+                                  [](unsigned char c)
+                                  { return std::isalpha(c); });
         LOG_DEBUG("Interpreter: isalpha retornando: " << (result ? "true" : "false"));
         return ValueWrapper(result);
     }

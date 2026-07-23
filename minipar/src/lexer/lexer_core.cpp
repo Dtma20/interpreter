@@ -16,6 +16,50 @@
 #include "../../include/debug.hpp"
 
 /**
+ * @brief Aplica processamento de escape em valor de string (T13).
+ *
+ * Reconhece: \\, \", \n, \t, \r. Outros escapes mantêm o caractere
+ * após a barra. Consistente com unescape_string() do módulo interpreter.
+ */
+static std::string unescape_lexer(const std::string &input)
+{
+    std::string result;
+    for (size_t i = 0; i < input.length(); ++i)
+    {
+        if (input[i] == '\\' && i + 1 < input.length())
+        {
+            ++i;
+            switch (input[i])
+            {
+            case 'n':
+                result += '\n';
+                break;
+            case 't':
+                result += '\t';
+                break;
+            case 'r':
+                result += '\r';
+                break;
+            case '\\':
+                result += '\\';
+                break;
+            case '"':
+                result += '"';
+                break;
+            default:
+                result += input[i];
+                break;
+            }
+        }
+        else
+        {
+            result += input[i];
+        }
+    }
+    return result;
+}
+
+/**
  * @brief Construtor do Lexer.
  *
  * Inicializa o lexer com o código fonte fornecido e define a linha inicial como 1.
@@ -29,20 +73,120 @@ Lexer::Lexer(const std::string &data) : data(data), line(1)
 }
 
 /**
+ * @brief Varredura prévia para detectar strings e comentários não terminados (T13).
+ *
+ * Percorre data caractere a caractere, rastreando estado de string e
+ * comentário de bloco. Lança SyntaxError com a linha de início se encontrar
+ * uma construção não terminada (fim de arquivo ou quebra de linha dentro de
+ * string). Também rastreia corretamente escapes (\\) e comentários de linha (#).
+ *
+ * @throws SyntaxError se string ou comentário de bloco não estiver fechado.
+ */
+void Lexer::detect_unterminated()
+{
+    bool in_string = false;
+    bool in_mcomment = false;
+    bool escape_next = false;
+    int string_start_line = 0;
+    int mcomment_start_line = 0;
+    int current_line = 1;
+
+    for (size_t i = 0; i < data.size(); ++i)
+    {
+        char c = data[i];
+
+        if (c == '\n')
+        {
+            current_line++;
+        }
+
+        if (in_string)
+        {
+            if (c == '\n')
+            {
+                throw SyntaxError(string_start_line,
+                                  "string não terminada (quebra de linha dentro do literal)");
+            }
+            if (escape_next)
+            {
+                escape_next = false;
+                continue;
+            }
+            if (c == '\\')
+            {
+                escape_next = true;
+                continue;
+            }
+            if (c == '"')
+            {
+                in_string = false;
+                continue;
+            }
+            continue;
+        }
+        if (in_mcomment)
+        {
+            if (c == '*' && i + 1 < data.size() && data[i + 1] == '/')
+            {
+                in_mcomment = false;
+                ++i;
+            }
+            continue;
+        }
+        if (c == '"')
+        {
+            in_string = true;
+            string_start_line = current_line;
+            escape_next = false;
+            continue;
+        }
+        if (c == '/' && i + 1 < data.size() && data[i + 1] == '*')
+        {
+            in_mcomment = true;
+            mcomment_start_line = current_line;
+            ++i; // consome '*'
+            continue;
+        }
+        if (c == '#')
+        {
+            while (i + 1 < data.size() && data[i + 1] != '\n')
+            {
+                ++i;
+            }
+            continue;
+        }
+    }
+    if (in_string)
+    {
+        throw SyntaxError(string_start_line,
+                          "string não terminada (fim de arquivo antes do fechamento)");
+    }
+    if (in_mcomment)
+    {
+        throw SyntaxError(mcomment_start_line,
+                          "comentário de bloco não terminado (fim de arquivo antes de */)");
+    }
+}
+
+/**
  * @brief Executa a análise léxica no código fonte.
  *
- * Utiliza uma expressão regular compilada (TOKEN_REGEX) para identificar os tokens
- * na string de entrada. Para cada correspondência encontrada, determina o tipo do
- * token com base nos padrões definidos em TOKEN_PATTERNS e ajusta o valor conforme
- * necessário (por exemplo, removendo as aspas de strings). Também ignora espaços em
- * branco, quebras de linha e comentários, atualizando o contador de linhas quando
- * necessário.
+ * Antes da tokenização:
+ * 1. Reseta contador de linha (scan() repetível, T13).
+ * 2. Varre data para detectar strings/comentários não terminados
+ *    e lança SyntaxError se necessário (T13).
  *
- * @return std::vector<std::pair<Token, int>> Vetor de pares, onde cada par contém
- *         um Token e o número da linha em que ele foi encontrado.
+ * Utiliza expressão regular compilada uma única vez (static const,
+ * std::regex::optimize) para identificar tokens. Valores de string
+ * têm aspas removidas e escapes processados (unescape_lexer, T13).
+ *
+ * @return std::vector<std::pair<Token, int>> Vetor de pares (token, linha).
  */
 std::vector<std::pair<Token, int>> Lexer::scan()
 {
+    // T13: reset para comportamento repetível
+    line = 1;
+
     LOG_DEBUG("Lexer: Iniciando scan(), tamanho da entrada: " << data.size());
     std::vector<std::pair<Token, int>> tokens;
 
@@ -59,10 +203,22 @@ std::vector<std::pair<Token, int>> Lexer::scan()
         return tokens;
     }
 
+    // T13: pré-varredura — detecta construções não terminadas
     try
     {
-        LOG_DEBUG("Lexer: Compilando expressão regular TOKEN_REGEX");
-        std::regex compiled_regex(TOKEN_REGEX);
+        detect_unterminated();
+    }
+    catch (const SyntaxError &)
+    {
+        throw; // propaga para main.cpp
+    }
+
+    try
+    {
+        // T13: compila regex uma única vez com optimize
+        LOG_DEBUG("Lexer: Compilando expressão regular TOKEN_REGEX (static)");
+        static const std::regex compiled_regex(TOKEN_REGEX, std::regex::optimize);
+
         auto words_begin = std::sregex_iterator(data.begin(), data.end(), compiled_regex);
         auto words_end = std::sregex_iterator();
 
@@ -135,9 +291,11 @@ std::vector<std::pair<Token, int>> Lexer::scan()
             }
             else if (type == "STRING")
             {
+                // T13: remove aspas e processa escapes
                 if (value.size() >= 2)
                 {
-                    value = value.substr(1, value.size() - 2);
+                    std::string raw = value.substr(1, value.size() - 2);
+                    value = unescape_lexer(raw);
                     LOG_DEBUG("Lexer: STRING ajustada, valor final: " << value);
                 }
                 else

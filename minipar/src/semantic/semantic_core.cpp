@@ -68,10 +68,9 @@ std::string SemanticAnalyzer::evaluate(Node *node) const
     else if (auto arr = dynamic_cast<Array *>(node))
         raw = visit_Array(arr).value_or("");
     if (raw.empty())
-        throw SemanticError(
-            std::string("Tipo não suportado para nó: ") +
-            typeid(*node).name()
-        );
+        throw SemanticError(node->getLine(),
+                            std::string("Tipo não suportado para nó: ") +
+                                typeid(*node).name());
     std::string norm = normalize(raw);
     LOG_DEBUG("SemanticAnalyzer: Type normalized to " << norm);
     return norm;

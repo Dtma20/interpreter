@@ -128,6 +128,71 @@ ValueWrapper Interpreter::evaluateArray(Array *array)
 }
 
 /**
+ * @brief Resolve accesso aninhado a elemento de array em escopo sem copiar containers.
+ *
+ * Percorre cadeia Access (ex.: a[0][1]) ate raiz ID. Se raiz for ID com
+ * shared_ptr no escopo, segue índices via ponteiros. Copia zero arrays
+ * intermediarios. Retorna ponteiro para elemento final ou nullptr.
+ */
+ValueWrapper* Interpreter::resolveAccessLvalue(Access *access)
+{
+    // Coleta expressoes de indice de fora (outermost) para dentro (innermost)
+    std::vector<Expression*> index_exprs;
+    Expression *current = access;
+
+    while (auto *acc = dynamic_cast<Access*>(current))
+    {
+        index_exprs.push_back(acc->getIndex());
+        current = acc->getBase();
+    }
+
+    // Raiz precisa ser ID para resolucao lvalue
+    ID *id = dynamic_cast<ID*>(current);
+    if (!id) return nullptr;
+
+    std::string var_name = id->getToken().getValue();
+
+    // Busca variavel nos escopos
+    ValueWrapper *var = nullptr;
+    for (auto it = scopes.rbegin(); it != scopes.rend(); ++it)
+    {
+        auto var_it = it->variables.find(var_name);
+        if (var_it != it->variables.end())
+        {
+            var = var_it->second.get();
+            break;
+        }
+    }
+    if (!var) return nullptr;
+
+    // Apenas arrays — strings caem no fallback com mensagem original
+    if (!std::holds_alternative<std::vector<ValueWrapper>>(var->data))
+        return nullptr;
+
+    // Percorre indices do mais interno (reverso) ao mais externo
+    ValueWrapper *current_val = var;
+    for (auto it = index_exprs.rbegin(); it != index_exprs.rend(); ++it)
+    {
+        Expression *idx_expr = *it;
+        ValueWrapper idx_val = evaluate(idx_expr);
+
+        if (!std::holds_alternative<long double>(idx_val.data))
+            throw RunTimeError("Índice deve ser um número");
+        size_t idx = to_index(std::get<long double>(idx_val.data), "Índice de array");
+
+        auto *arr = std::get_if<std::vector<ValueWrapper>>(&current_val->data);
+        if (!arr)
+            throw RunTimeError("Tentativa de indexar algo que não é array");
+        if (idx >= arr->size())
+            throw RunTimeError("Índice " + std::to_string(idx) + " fora do intervalo (tamanho=" +
+                               std::to_string(arr->size()) + ")");
+        current_val = &(*arr)[idx];
+    }
+
+    return current_val;
+}
+
+/**
  * @brief Avalia um acesso (array ou string) e retorna um ValueWrapper contendo o valor
  *        no índice especificado.
  */
@@ -138,36 +203,48 @@ ValueWrapper Interpreter::evaluateAccess(Access *access)
         LOG_DEBUG("Interpreter: Acesso com base ou índice nulo");
         throw RunTimeError("Acesso com base ou índice nulo");
     }
+
+    // T04: Resolucao lvalue evita copia do array inteiro
+    ValueWrapper *lvalue = resolveAccessLvalue(access);
+    if (lvalue)
+    {
+        LOG_DEBUG("Interpreter: Acesso resolvido via lvalue, copiando elemento final");
+        return *lvalue;
+    }
+
+    // Fallback: base nao-ID (constante string, retorno de funcao, etc.)
     ValueWrapper base_val = evaluate(access->getBase());
     ValueWrapper index_val = evaluate(access->getIndex());
 
     if (std::holds_alternative<std::vector<ValueWrapper>>(base_val.data) &&
         std::holds_alternative<long double>(index_val.data))
     {
-        int index = static_cast<int>(std::get<long double>(index_val.data));
+        size_t index = to_index(std::get<long double>(index_val.data), "Índice de array");
         auto &arr = std::get<std::vector<ValueWrapper>>(base_val.data);
-        if (index >= 0 && index < static_cast<int>(arr.size()))
+        if (index < arr.size())
         {
             LOG_DEBUG("Interpreter: Acesso a array no índice " << index);
             return arr[index];
         }
         LOG_DEBUG("Interpreter: Erro, índice fora do intervalo: " << index);
-        throw RunTimeError("Índice " + std::to_string(index) + " fora do intervalo");
+        throw RunTimeError("Índice " + std::to_string(index) + " fora do intervalo (tamanho=" +
+                           std::to_string(arr.size()) + ")");
     }
     else if (std::holds_alternative<std::string>(base_val.data) &&
              std::holds_alternative<long double>(index_val.data))
     {
         const std::string& str = std::get<std::string>(base_val.data);
-        int index = static_cast<int>(std::get<long double>(index_val.data));
+        size_t index = to_index(std::get<long double>(index_val.data), "Índice de string");
         LOG_DEBUG("Interpreter: Acesso a string '" << str << "' no índice: " << index);
-        if (index >= 0 && index < static_cast<int>(str.length()))
+        if (index < str.length())
         {
             std::string result(1, str[index]);
             LOG_DEBUG("Interpreter: Resultado do acesso: " << result);
             return ValueWrapper(result);
         }
         LOG_DEBUG("Interpreter: Erro, índice fora do intervalo: " << index);
-        throw RunTimeError("Índice fora do intervalo: " + std::to_string(index));
+        throw RunTimeError("Índice " + std::to_string(index) + " fora do intervalo (tamanho=" +
+                           std::to_string(str.length()) + ")");
     }
     LOG_DEBUG("Interpreter: Erro, tipo inválido para acesso");
     throw RunTimeError("Tipo inválido para acesso");
@@ -303,34 +380,14 @@ ValueWrapper Interpreter::evaluateUnary(Unary *unary)
         }
         else if (auto *access = dynamic_cast<Access *>(operand))
         {
-            if (!access->getBase() || !access->getIndex())
-                throw RunTimeError("Acesso com base ou índice nulo");
-            std::string base_name = access->getBase()->getToken().getValue();
-            ValueWrapper index_val = evaluate(access->getIndex());
-            if (!std::holds_alternative<long double>(index_val.data))
-                throw RunTimeError("Índice deve ser um número");
-            int index = static_cast<int>(std::get<long double>(index_val.data));
-
-            ValueWrapper *base_ptr = nullptr;
-            for (auto it = scopes.rbegin(); it != scopes.rend(); ++it)
-            {
-                auto var_it = it->variables.find(base_name);
-                if (var_it != it->variables.end())
-                {
-                    base_ptr = var_it->second.get();
-                    break;
-                }
-            }
-            if (!base_ptr)
-                throw RunTimeError("Array não definido: " + base_name);
-            if (!std::holds_alternative<std::vector<ValueWrapper>>(base_ptr->data))
-                throw RunTimeError(base_name + " não é um array");
-            auto &arr = std::get<std::vector<ValueWrapper>>(base_ptr->data);
-            if (index < 0 || index >= arr.size())
-                throw RunTimeError("Índice " + std::to_string(index) + " fora do intervalo para " + base_name);
-            if (!std::holds_alternative<long double>(arr[index].data))
-                throw RunTimeError("Elemento no índice " + std::to_string(index) + " não é numérico");
-            long double &value = std::get<long double>(arr[index].data);
+            // T04: Reusa lvalue resolver (evita duplicacao, suporta nested)
+            ValueWrapper *lvalue = resolveAccessLvalue(access);
+            if (!lvalue)
+                throw RunTimeError("Operadores ++ e -- só podem ser aplicados a variáveis ou posições de array");
+            auto *elem_num = std::get_if<long double>(&lvalue->data);
+            if (!elem_num)
+                throw RunTimeError("Elemento acessado não é numérico para ++/--");
+            long double &value = *elem_num;
             if (unary->isPostfix())
             {
                 result = ValueWrapper(value);
@@ -341,7 +398,7 @@ ValueWrapper Interpreter::evaluateUnary(Unary *unary)
                 if (op == "INC") value += 1.0; else value -= 1.0;
                 result = ValueWrapper(value);
             }
-            LOG_DEBUG("Interpreter: " << base_name << "[" << index << "] " << (unary->isPostfix() ? "pós" : "pré") << "-fixado: " << value);
+            LOG_DEBUG("Interpreter: array[idx] " << (unary->isPostfix() ? "pós" : "pré") << "-fixado: " << value);
             return result;
         }
         throw RunTimeError("Operadores ++ e -- só podem ser aplicados a variáveis ou posições de array");

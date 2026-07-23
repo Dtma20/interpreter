@@ -129,19 +129,29 @@ Body Parser::block(const Parameters &params)
 /**
  * @brief Analisa a lista de parâmetros de uma função.
  */
-Parameters Parser::params() {
+Parameters Parser::params()
+{
     Parameters parameters;
-    match("LPAREN");
-    if (lookahead.getValue() != ")") {
-      auto p = param();
-      parameters.push_back(std::move(p));
+    if (!match("LPAREN"))
+        throw SyntaxError(lineno, "Esperado '(' para lista de parâmetros, mas encontrado " + lookahead.getValue());
+    bool hasOptional = false;
+    if (lookahead.getValue() != ")")
+    {
+        auto p = param();
+        hasOptional = (p.second.second != nullptr);
+        parameters.push_back(std::move(p));
     }
-    while (lookahead.getTag() == ",") {
-      match(",");
-      auto p = param();
-      parameters.push_back(std::move(p));
+    while (lookahead.getTag() == ",")
+    {
+        match(",");
+        auto p = param();
+        if (hasOptional && p.second.second == nullptr)
+            throw SyntaxError(lineno, "Parâmetro obrigatório '" + p.first + "' não pode vir após parâmetro opcional");
+        hasOptional = hasOptional || (p.second.second != nullptr);
+        parameters.push_back(std::move(p));
     }
-    match("RPAREN");
+    if (!match("RPAREN"))
+        throw SyntaxError(lineno, "Esperado ')' após parâmetros, mas encontrado " + lookahead.getValue());
     return parameters;
 }
 
@@ -165,7 +175,7 @@ std::pair<std::string, std::pair<std::string, std::unique_ptr<Expression>>> Pars
         throw SyntaxError(lineno, "esperado um tipo no lugar de " + lookahead.getValue());
     }
     std::unique_ptr<Expression> default_value = nullptr;
-    if (lookahead.getTag() == "=")
+    if (lookahead.getTag() == "ASSIGN")
     {
         match("ASSIGN");
         default_value = disjunction();

@@ -1,0 +1,12 @@
+# T13: scan() repeatability test
+# Verifica que dois scan() produzem mesmo resultado
+
+# Test 1: basic tokens
+x: num = 42
+print("hello world\n")
+print("tab\there\n")
+
+# Test 2: comments are skipped
+# comment line
+/* block comment */
+y: num = 100

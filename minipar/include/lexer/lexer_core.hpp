@@ -7,6 +7,7 @@
 #include <vector>
 #include <regex>
 #include "../token.hpp"
+#include "../error.hpp"
 
 /**
  * @brief Interface abstrata para o lexer da linguagem Minipar.
@@ -80,6 +81,17 @@ private:
      * respectivas categorias ou tags (como "IF", "TYPE").
      */
     std::unordered_map<std::string, std::string> token_table;
+
+    /**
+     * @brief Detecta strings e comentários não terminados (T13).
+     *
+     * Varre data caractere a caractere para identificar strings não fechadas
+     * ou comentários de bloco não terminados. Lança SyntaxError com a linha
+     * correta se encontrar um construção não terminada.
+     *
+     * @throws SyntaxError se string ou comentário de bloco não estiver terminado.
+     */
+    void detect_unterminated();
 };
 
 #endif // LEXER_CORE_HPP

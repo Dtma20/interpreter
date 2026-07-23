@@ -30,132 +30,41 @@ extern std::mutex cout_mutex;
 /**
  * @brief Representa o valor de um canal de cliente.
  *
- * Um canal de cliente precisa do seu nome e do número do socket criado.
+ * Conexão por request: cada chamada a request() conecta, envia frame
+ * com prefixo de tamanho, recebe resposta emoldurada, e fecha o socket.
+ * Guarda apenas host e porta; sem estado persistente de socket.
  */
 class CChannelValue {
     public:
-        CChannelValue(const std::string &host, uint16_t port)
-            : sock_fd_(-1), host_(host), port_(port)
-        {
-            struct addrinfo hints{}, *res = nullptr;
-            hints.ai_family   = AF_UNSPEC;
-            hints.ai_socktype = SOCK_STREAM;
-            hints.ai_flags    = AI_ADDRCONFIG;
-    
-            int err = ::getaddrinfo(host_.c_str(),
-                                    std::to_string(port_).c_str(),
-                                    &hints, &res);
-            if (err != 0) {
-                throw std::runtime_error("CChannel: getaddrinfo falhou para '" +
-                                         host_ + "': " + gai_strerror(err));
-            }
-
-            for (auto ptr = res; ptr != nullptr; ptr = ptr->ai_next) {
-                sock_fd_ = ::socket(ptr->ai_family,
-                                    ptr->ai_socktype,
-                                    ptr->ai_protocol);
-                if (sock_fd_ < 0) continue;
-    
-                if (::connect(sock_fd_, ptr->ai_addr, ptr->ai_addrlen) == 0) {
-                    break;
-                }
-                ::close(sock_fd_);
-                sock_fd_ = -1;
-            }
-    
-            freeaddrinfo(res);
-    
-            if (sock_fd_ < 0) {
-                throw std::runtime_error("CChannel: falha ao conectar em " +
-                                         host_ + ":" + std::to_string(port_));
-            }
-        }
-
-        ~CChannelValue() {
-            if (sock_fd_ >= 0) {
-                ::close(sock_fd_);
-            }
-        }
+        CChannelValue(const std::string &host, uint16_t port);
+        ~CChannelValue() = default;
 
         CChannelValue(const CChannelValue&) = delete;
         CChannelValue& operator=(const CChannelValue&) = delete;
-    
-        CChannelValue(CChannelValue&& other) noexcept
-            : sock_fd_(other.sock_fd_),
-              host_(std::move(other.host_)),
-              port_(other.port_)
-        {
-            other.sock_fd_ = -1;
-        }
-    
-        CChannelValue& operator=(CChannelValue&& other) noexcept {
-            if (this != &other) {
-                if (sock_fd_ >= 0) ::close(sock_fd_);
-                sock_fd_ = other.sock_fd_;
-                host_    = std::move(other.host_);
-                port_    = other.port_;
-                other.sock_fd_ = -1;
-            }
-            return *this;
-        }
+        CChannelValue(CChannelValue&&) noexcept = default;
+        CChannelValue& operator=(CChannelValue&&) noexcept = default;
 
-        void close() noexcept {
-            if (sock_fd_ >= 0) {
-                ::close(sock_fd_);
-                sock_fd_ = -1;
-            }
-        }
+        /** Marca o canal como fechado; request() subsequente lança RunTimeError. */
+        void close() noexcept { closed_ = true; }
 
-        void send_raw(const std::string &msg) const {
-            ssize_t total = 0, len = msg.size();
-            const char *data = msg.data();
-            while (total < len) {
-                ssize_t sent = ::send(sock_fd_, data + total, len - total, 0);
-                if (sent <= 0) {
-                    throw std::runtime_error("CChannel: erro ao enviar dados");
-                }
-                total += sent;
-            }
-        }
-    
-        std::string recv_until(char delimiter = '\n') const {
-            std::string result;
-            while (true) {
-                // Drain buffered data first
-                if (read_pos_ < read_buffer_.size()) {
-                    size_t delim_pos = read_buffer_.find(delimiter, read_pos_);
-                    if (delim_pos != std::string::npos) {
-                        result.append(read_buffer_, read_pos_, delim_pos - read_pos_);
-                        read_pos_ = delim_pos + 1;
-                        return result;
-                    }
-                    result.append(read_buffer_, read_pos_, read_buffer_.size() - read_pos_);
-                    read_buffer_.clear();
-                    read_pos_ = 0;
-                }
-                // Refill
-                char block[4096];
-                ssize_t r = ::recv(sock_fd_, block, sizeof(block), 0);
-                if (r < 0) {
-                    throw std::runtime_error("CChannel: erro ao receber dados");
-                }
-                if (r == 0) {
-                    return result; // EOF: return what was accumulated
-                }
-                read_buffer_.append(block, static_cast<size_t>(r));
-            }
-        }
+        /**
+         * @brief Ciclo completo request/response.
+         *
+         * Conecta ao host:port, envia @p msg emoldurada com prefixo de
+         * 4 bytes big-endian, lê resposta emoldurada, fecha socket, retorna.
+         *
+         * @throws RunTimeError se canal fechado, host/port inválidos,
+         *         timeout, ou peer fechar antes de responder.
+         */
+        std::string request(const std::string &msg);
 
         const std::string& host() const noexcept { return host_; }
-        uint16_t port()          const noexcept { return port_; }
-        int      fd()            const noexcept { return sock_fd_; }
+        uint16_t           port() const noexcept { return port_; }
     
     private:
-        int         sock_fd_;
         std::string host_;
         uint16_t    port_;
-        mutable std::string read_buffer_;
-        mutable size_t read_pos_ = 0;
+        bool        closed_ = false;
     };
 
 /**
@@ -216,13 +125,22 @@ private:
 
     struct DepthGuard {
         Interpreter &interp;
+        bool committed = false;
         explicit DepthGuard(Interpreter &i) : interp(i) {
-            if (++interp.recursion_depth > interp.max_recursion_depth) {
+            if (interp.recursion_depth >= interp.max_recursion_depth) {
                 throw RunTimeError("Recursão máxima excedida (" +
                     std::to_string(interp.max_recursion_depth) + ")");
             }
+            ++interp.recursion_depth;
+            committed = true;
         }
-        ~DepthGuard() { interp.recursion_depth--; }
+        ~DepthGuard() { if (committed) interp.recursion_depth--; }
+    };
+
+    struct ScopeGuard {
+        Interpreter &interp;
+        explicit ScopeGuard(Interpreter &i) : interp(i) { interp.push_scope(); }
+        ~ScopeGuard() { interp.pop_scope(); }
     };
 
     ValueWrapper evaluate(Expression *expr);
@@ -251,6 +169,7 @@ private:
     ValueWrapper evaluateID(ID *id);
     ValueWrapper evaluateArray(Array *array);
     ValueWrapper evaluateAccess(Access *access);
+    ValueWrapper* resolveAccessLvalue(Access *access);
     ValueWrapper evaluateFunctionCall(Call *call);
     ValueWrapper evaluateRelational(Relational *relational);
     ValueWrapper evaluateArithmetic(Arithmetic *arithmetic);
@@ -283,5 +202,10 @@ public:
 // Free functions
 std::string unescape_string(const std::string &input);
 std::ostream &operator<<(std::ostream &os, const ValueWrapper &v);
+
+// Safe numeric conversions (T12)
+// Rejeita não-finito, fracionário, negativo, overflow.
+size_t  to_index(long double value, const char *context);
+uint16_t to_port(long double value, const char *context);
 
 #endif // INTERPRETER_CORE_HPP

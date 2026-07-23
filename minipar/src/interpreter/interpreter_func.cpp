@@ -64,6 +64,11 @@ ValueWrapper Interpreter::evaluateFunctionCall(Call *call)
 /**
  * @brief Executa uma função definida pelo usuário.
  *
+ * Parâmetros com valor default (T11): argumentos omitidos são preenchidos
+ * avaliando-se a expressão default no escopo local da função, após a
+ * vinculação dos argumentos fornecidos. Defaults podem referenciar
+ * parâmetros anteriores já vinculados. Argumento explícito sempre prevalece.
+ *
  * @param func Ponteiro para a definição da função.
  * @param args Lista de argumentos passados na chamada.
  * @return ValueWrapper com o valor de retorno da função.
@@ -71,45 +76,64 @@ ValueWrapper Interpreter::evaluateFunctionCall(Call *call)
 ValueWrapper Interpreter::execute_function(FuncDef *func, const Arguments &args)
 {
     DepthGuard depth_guard(*this); // N5: RAII recursion limit check
-
-    push_scope();
+    ScopeGuard scope_guard(*this); // T14: RAII scope cleanup
 
     const auto &params = func->getParams();
-    if (args.size() != params.size())
+
+    // T11: contar parâmetros obrigatórios (sem default)
+    size_t minArgs = 0;
+    for (const auto &p : params)
+        if (!p.second.second) ++minArgs;
+
+    if (args.size() < minArgs || args.size() > params.size())
         throw RunTimeError(
             "Número incorreto de argumentos para '" + func->getName() +
-            "': esperado " + std::to_string(params.size()) +
+            "': esperado entre " + std::to_string(minArgs) +
+            " e " + std::to_string(params.size()) +
             ", recebido " + std::to_string(args.size()));
 
     for (size_t i = 0; i < params.size(); ++i)
     {
         const std::string &name = params[i].first;
-        Expression *argExpr = args[i].get();
-        bool boundByRef = false;
 
-        if (auto *id = dynamic_cast<ID *>(argExpr))
-        {
-            const std::string key = id->getToken().getValue();
-            for (auto it = scopes.rbegin(); it != scopes.rend(); ++it)
+        if (i < args.size()) {
+            // Argumento explícito fornecido — vincula normalmente
+            Expression *argExpr = args[i].get();
+            bool boundByRef = false;
+
+            if (auto *id = dynamic_cast<ID *>(argExpr))
             {
-                auto vit = it->variables.find(key);
-                if (vit != it->variables.end())
+                const std::string key = id->getToken().getValue();
+                for (auto it = scopes.rbegin(); it != scopes.rend(); ++it)
                 {
-                    auto &dataVar = vit->second->data;
-                    if (std::holds_alternative<std::vector<ValueWrapper>>(dataVar))
+                    auto vit = it->variables.find(key);
+                    if (vit != it->variables.end())
                     {
-                        scopes.back().variables[name] = vit->second;
-                        boundByRef = true;
-                        break;
+                        auto &dataVar = vit->second->data;
+                        if (std::holds_alternative<std::vector<ValueWrapper>>(dataVar))
+                        {
+                            scopes.back().variables[name] = vit->second;
+                            boundByRef = true;
+                            break;
+                        }
                     }
                 }
             }
-        }
 
-        if (!boundByRef)
-        {
-            auto tmp = evaluate(argExpr);
-            scopes.back().variables[name] = std::make_shared<ValueWrapper>(std::move(tmp));
+            if (!boundByRef)
+            {
+                auto tmp = evaluate(argExpr);
+                scopes.back().variables[name] = std::make_shared<ValueWrapper>(std::move(tmp));
+            }
+        } else {
+            // T11: argumento omitido — avaliar default no escopo da função
+            Expression *defaultExpr = params[i].second.second.get();
+            if (!defaultExpr)
+                throw RunTimeError(
+                    "Parâmetro '" + name + "' de '" + func->getName() +
+                    "' não possui valor default");
+            auto defaultVal = evaluate(defaultExpr);
+            scopes.back().variables[name] = std::make_shared<ValueWrapper>(std::move(defaultVal));
         }
     }
 
@@ -120,11 +144,9 @@ ValueWrapper Interpreter::execute_function(FuncDef *func, const Arguments &args)
         {
             ValueWrapper result = std::move(return_value);
             return_flag = false;
-            pop_scope();
             return result;
         }
     }
 
-    pop_scope();
     return ValueWrapper(std::string(""));
 }

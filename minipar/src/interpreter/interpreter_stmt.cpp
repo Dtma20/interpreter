@@ -114,46 +114,11 @@ void Interpreter::execute_stmt(Node *stmt)
         }
         else if (auto *access = dynamic_cast<Access *>(left))
         {
-            std::vector<int> indices;
-            std::vector<Expression *> chain;
-            Expression *current = access;
-            while (auto *acc = dynamic_cast<Access *>(current))
-            {
-                ValueWrapper idx_val = evaluate(acc->getIndex());
-                if (!std::holds_alternative<long double>(idx_val.data))
-                    throw RunTimeError("Índice deve ser um número");
-                indices.push_back(static_cast<int>(std::get<long double>(idx_val.data)));
-                chain.push_back(acc);
-                current = acc->getBase();
-            }
-            const std::string base_name = dynamic_cast<ID *>(current)->getToken().getValue();
-            ValueWrapper *node = nullptr;
-            for (auto it = scopes.rbegin(); it != scopes.rend(); ++it)
-            {
-                auto vit = it->variables.find(base_name);
-                if (vit != it->variables.end())
-                {
-                    node = vit->second.get();
-                    break;
-                }
-            }
-            if (!node)
-                throw RunTimeError("Variável " + base_name + " não definida");
-            for (int i = static_cast<int>(chain.size()) - 1; i >= 0; --i)
-            {
-                auto &arr = std::get<std::vector<ValueWrapper>>(node->data);
-                int idx = indices[i];
-                if (idx < 0 || idx >= static_cast<int>(arr.size()))
-                    throw RunTimeError("Índice " + std::to_string(idx) + " fora do intervalo");
-                if (i == 0)
-                {
-                    arr[idx] = value;
-                }
-                else
-                {
-                    node = &arr[idx];
-                }
-            }
+            // T04: Reusa lvalue resolver para atribuicao indexada
+            ValueWrapper *lvalue = resolveAccessLvalue(access);
+            if (!lvalue)
+                throw RunTimeError("Lado esquerdo da atribuição deve ser uma variável indexada existente");
+            *lvalue = value;
         }
         else
         {
@@ -186,25 +151,23 @@ void Interpreter::execute_stmt(Node *stmt)
         ValueWrapper cond = evaluate(if_stmt->getCondition());
         if (is_true(cond))
         {
-            push_scope();
+            ScopeGuard scope_guard(*this);
             for (auto &st : if_stmt->getBody())
             {
                 execute_stmt(st.get());
                 if (return_flag || break_flag || continue_flag)
                     break;
             }
-            pop_scope();
         }
         else if (if_stmt->getElseStmt())
         {
-            push_scope();
+            ScopeGuard scope_guard(*this);
             for (auto &st : *if_stmt->getElseStmt())
             {
                 execute_stmt(st.get());
                 if (return_flag || break_flag || continue_flag)
                     break;
             }
-            pop_scope();
         }
     }
     else if (auto *while_stmt = dynamic_cast<While *>(stmt))
@@ -214,19 +177,15 @@ void Interpreter::execute_stmt(Node *stmt)
             ValueWrapper cond = evaluate(while_stmt->getCondition());
             if (!is_true(cond))
                 break;
-            push_scope();
+            ScopeGuard scope_guard(*this);
             for (auto &st : while_stmt->getBody())
             {
                 execute_stmt(st.get());
                 if (return_flag)
-                {
-                    pop_scope();
                     return;
-                }
                 if (break_flag)
                 {
                     break_flag = false;
-                    pop_scope();
                     break;
                 }
                 if (continue_flag)
@@ -235,11 +194,8 @@ void Interpreter::execute_stmt(Node *stmt)
                     break;
                 }
             }
-            pop_scope();
             if (break_flag)
-            {
                 break;
-            }
         }
     }
     else if (auto *brk = dynamic_cast<Break *>(stmt))
@@ -299,30 +255,35 @@ void Interpreter::execute_stmt(Node *stmt)
     }
     else if (auto *seq = dynamic_cast<Seq *>(stmt))
     {
+        std::unique_ptr<ScopeGuard> block_scope;
         if (seq->isBlock())
-            push_scope();
+            block_scope = std::make_unique<ScopeGuard>(*this);
         for (auto &st : seq->getBody())
         {
             execute_stmt(st.get());
             if (return_flag || break_flag || continue_flag)
                 break;
         }
-        if (seq->isBlock())
-            pop_scope();
     }
     else if (auto *cch = dynamic_cast<CChannel *>(stmt))
     {
         std::string name = cch->getName();
         ValueWrapper host = evaluate(cch->getLocalhostNode());
         ValueWrapper port = evaluate(cch->getPortNode());
-        std::string h = std::get<std::string>(host.data);
-        int p = static_cast<int>(std::get<long double>(port.data));
 
-        auto channelVal = std::make_shared<CChannelValue>(h, p);
+        auto *h_str = std::get_if<std::string>(&host.data);
+        if (!h_str)
+            throw RunTimeError("CChannel '" + name + "': localhost deve ser string");
+        auto *p_num = std::get_if<long double>(&port.data);
+        if (!p_num)
+            throw RunTimeError("CChannel '" + name + "': porta deve ser número");
+        uint16_t p = to_port(*p_num, ("Porta de CChannel '" + name + "'").c_str());
+
+        auto channelVal = std::make_shared<CChannelValue>(*h_str, p);
         scopes.back().variables[name] = std::make_shared<ValueWrapper>(channelVal);
 
         std::cout << "CChannel '" << name << "' criado com localhost: "
-                  << h << ", port: " << p << std::endl;
+                  << *h_str << ", port: " << p << std::endl;
     }
     else if (auto *sch = dynamic_cast<SChannel *>(stmt))
     {
@@ -331,19 +292,17 @@ void Interpreter::execute_stmt(Node *stmt)
     else if (auto *arr_decl = dynamic_cast<ArrayDecl *>(stmt))
     {
         const std::string var_name = arr_decl->getName();
-        std::vector<int> dims;
+        std::vector<size_t> dims;
         for (auto &dim_expr : arr_decl->getDimensions())
         {
             ValueWrapper dv = evaluate(dim_expr.get());
             if (!std::holds_alternative<long double>(dv.data))
                 throw RunTimeError("Tamanho do array '" + var_name + "' deve ser número");
-            int sz = static_cast<int>(std::get<long double>(dv.data));
-            if (sz < 0)
-                throw RunTimeError("Tamanho do array '" + var_name + "' não pode ser negativo");
-            dims.push_back(sz);
+            dims.push_back(to_index(std::get<long double>(dv.data),
+                                    ("Dimensão de '" + var_name + "'").c_str()));
         }
-        std::function<ValueWrapper(const std::vector<int> &, size_t)> make_arr =
-            [&](const std::vector<int> &d, size_t lvl) -> ValueWrapper
+        std::function<ValueWrapper(const std::vector<size_t> &, size_t)> make_arr =
+            [&](const std::vector<size_t> &d, size_t lvl) -> ValueWrapper
         {
             if (lvl == d.size())
                 return ValueWrapper(0.0L);

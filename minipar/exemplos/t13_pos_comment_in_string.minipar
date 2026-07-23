@@ -1,0 +1,2 @@
+print("comentario # dentro de string\n")
+print("bloco /* dentro */ de string\n")

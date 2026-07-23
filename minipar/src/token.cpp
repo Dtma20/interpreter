@@ -50,7 +50,7 @@ const std::vector<std::pair<std::string, std::string>> TOKEN_PATTERNS = {
     {"NAME", "[A-Za-z_][A-Za-z0-9_]*"},
     {"NUM", "\\b\\d+\\.\\d+|\\.\\d+|\\d+\\b"},
     {"RARROW", "->"},
-    {"STRING", "\"(?:[^\"]*)\""},
+    {"STRING", "\"(?:[^\"\\\\]|\\\\.)*\""},
     {"SCOMMENT", "#.*"},
     {"MCOMMENT", "/\\*[\\s\\S]*?\\*/"},
     {"OR", "\\|\\|"},

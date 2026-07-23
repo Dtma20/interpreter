@@ -1,0 +1,31 @@
+# T13 — Lexer strings & regex test fixture
+# Verifica: aspas, barra, escapes whitespace, nao terminado
+
+# --- escapes basicos (aceite: aspas, barras, escapes whitespace) ---
+print("hello world\n")                        # \n
+print("tab\there\n")                           # \t
+print("quote: \"inside\"\n")                   # \" escapada
+print("backslash: \\ path\n")                  # \\ escapada
+
+# --- string vazia ---
+print("antes", "", "depois\n")
+
+# --- escape \r ---
+print("hello\rworld\n")
+
+# --- multiplas strings na mesma linha ---
+print("um", "dois", "tres\n")
+
+# --- combinacoes de escape ---
+print("\\\\\n")                                # dois backslashes + newline
+print("A\tB\tC\n")                             # multiplos \t
+print("\"\\\"\n")                              # quote, backslash, quote
+
+# --- comentario de bloco ---
+/* isto e um comentario
+   multilinha */
+print("comentario de bloco ignorado\n")
+
+# --- comentario de linha com aspas ---
+# isso e um comentario com "aspas" que nao devem confundir o lexer
+print("comentario linha ok\n")

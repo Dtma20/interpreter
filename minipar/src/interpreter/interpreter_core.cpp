@@ -16,15 +16,17 @@
 #include <sstream>
 #include <iomanip>
 #include <cmath>
+#include <cstdint>
+#include <limits>
 #include "../../include/debug.hpp"
 
 std::mutex cout_mutex;
 
 #ifdef _WIN32
-  #include <winsock2.h>
-  #include <ws2tcpip.h>
+#include <winsock2.h>
+#include <ws2tcpip.h>
 #else
-  #include <arpa/inet.h>
+#include <arpa/inet.h>
 #endif
 
 /**
@@ -175,7 +177,7 @@ std::string Interpreter::convert_value_to_string(const ValueWrapper &value)
 {
     if (!value.isInitialized())
     {
-        throw std::runtime_error("ValueWrapper não inicializado");
+        throw RunTimeError("ValueWrapper não inicializado");
     }
 
     return std::visit([this](auto &&val) -> std::string
@@ -217,7 +219,7 @@ std::string Interpreter::convert_value_to_string(const ValueWrapper &value)
          }
          else
          {
-             throw std::runtime_error("Tipo não suportado em ValueWrapper");
+              throw RunTimeError("Tipo não suportado em ValueWrapper");
          } }, value.data);
 }
 
@@ -276,9 +278,10 @@ void Interpreter::execute(Module *module)
     if (auto *seq = dynamic_cast<Seq *>(root_stmt))
     {
         LOG_DEBUG("Interpreter: Módulo contém um Seq, isBlock() = " << (seq->isBlock() ? "true" : "false"));
+        std::unique_ptr<ScopeGuard> block_scope;
         if (seq->isBlock())
         {
-            push_scope();
+            block_scope = std::make_unique<ScopeGuard>(*this);
             LOG_DEBUG("Interpreter: Criando novo escopo para o módulo (is_block = true)");
         }
 
@@ -291,12 +294,6 @@ void Interpreter::execute(Module *module)
                 break;
             }
         }
-
-        if (seq->isBlock())
-        {
-            pop_scope();
-            LOG_DEBUG("Interpreter: Desempilhando escopo do módulo (is_block = true)");
-        }
     }
     else
     {
@@ -305,4 +302,47 @@ void Interpreter::execute(Module *module)
     }
 
     LOG_DEBUG("Interpreter: Execução do módulo concluída");
+}
+
+namespace
+{
+
+    void validate_finite_integral(long double value, const char *context)
+    {
+        if (!std::isfinite(value))
+        {
+            throw RunTimeError(std::string(context) + " deve ser um número finito");
+        }
+        long double int_part = 0.0L;
+        long double frac = std::modf(value, &int_part);
+        if (frac != 0.0L)
+        {
+            char buf[64];
+            std::snprintf(buf, sizeof(buf), "%.6Lf", value);
+            throw RunTimeError(std::string(context) + " deve ser número inteiro, recebeu " + buf);
+        }
+    }
+
+}
+
+size_t to_index(long double value, const char *context)
+{
+    validate_finite_integral(value, context);
+    if (value < 0.0L)
+        throw RunTimeError(std::string(context) + " não pode ser negativo");
+    if (value > static_cast<long double>(std::numeric_limits<size_t>::max()))
+        throw RunTimeError(std::string(context) + " excede o valor máximo permitido");
+    return static_cast<size_t>(value);
+}
+
+uint16_t to_port(long double value, const char *context)
+{
+    validate_finite_integral(value, context);
+    if (value < 1.0L || value > 65535.0L)
+    {
+        char buf[64];
+        std::snprintf(buf, sizeof(buf), "%.0Lf", value);
+        throw RunTimeError(std::string(context) + " deve estar entre 1 e 65535, recebeu " + buf);
+    }
+    return static_cast<uint16_t>(value);
 }
