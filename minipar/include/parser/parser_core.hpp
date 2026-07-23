@@ -4,12 +4,10 @@
 #pragma once
 #include <memory>
 #include <vector>
-#include <unordered_set>
-#include "../ast.hpp"
-#include "../lexer.hpp"
-#include "../symtable.hpp"
-#include "../error.hpp"
+#include "ast/ast_base.hpp"
 #include "../token.hpp"
+
+class SymTable;
 
 /**
  * @brief Interface para um analisador sintático (parser).
@@ -43,6 +41,8 @@ public:
 class Parser : public IParser
 {
 public:
+    ~Parser();
+
     /**
      * @brief Construtor da classe Parser.
      * @param tokens Lista de tokens com suas respectivas linhas extraídas pelo lexer.
@@ -78,7 +78,6 @@ private:
     Parameters params();
     std::pair<std::string, std::pair<std::string, std::unique_ptr<Expression>>> param();
     Arguments args();
-    void skipWhitespace();
     Token peekNext();
 
     // Expressões
@@ -93,6 +92,15 @@ private:
     std::unique_ptr<Expression> local();
 
     std::string var(const std::string &id_type);
+
+    void setLine(Node *node) { if (node) node->setLine(lineno); }
+
+    /** Marca o nó com a linha do token corrente (antes de match) ou uma linha capturada. */
+    template <typename T>
+    std::unique_ptr<T> withLine(std::unique_ptr<T> node, int line) {
+        if (node) node->setLine(line);
+        return node;
+    }
 
     // Métodos auxiliares para modularização do stmt()
     std::unique_ptr<Node> stmtUnaryPrefix();

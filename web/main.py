@@ -1,59 +1,82 @@
-import os
 import subprocess
-import time
+import uuid
+from pathlib import Path
+
 import streamlit as st
 
-MINIPAR_PATH = "../minipar/minipar"
+# ── paths robustos (não dependem de CWD) ──────────────────────────────────────
+MINIPAR_DIR = Path(__file__).resolve().parent.parent / "minipar"
+MINIPAR_BIN = MINIPAR_DIR / "minipar"
+TMP_DIR = MINIPAR_DIR / "tmp"
+
+# ── padrões suspeitos de path traversal ──────────────────────────────────────
+_FORBIDDEN = ["../", "..\\", "~/", "/etc/", "\\system32", "cmd.exe"]
 
 
-def format_process_output(stdout):
-    for line in stdout:
-        yield "\n" + line
+def validate_code(code: str) -> tuple[bool, str]:
+    """Retorna (ok, mensagem_de_erro)."""
+    if not code or not code.strip():
+        return False, "Código vazio"
+    for pattern in _FORBIDDEN:
+        if pattern.lower() in code.lower():
+            return False, f"Path traversal detectado: '{pattern}'"
+    return True, ""
 
 
-def exec_minipar_with_input(code: str, user_input: str):
-    dir_path = os.path.join("../minipar/tmp")
-    code_file = os.path.join(dir_path, "prog.minipar")
+def exec_minipar(code: str, user_input: str, timeout: int = 10) -> tuple[str, str]:
+    """
+    Executa código Minipar em subprocesso isolado.
+    Retorna (stdout, stderr). Ambos strings.
+    """
+    TMP_DIR.mkdir(parents=True, exist_ok=True)
 
-    os.makedirs(dir_path, exist_ok=True)
+    filename = f"{uuid.uuid4().hex}.minipar"
+    code_file = TMP_DIR / filename
 
-    with open(code_file, "w") as f:
-        f.write(code)
+    try:
+        code_file.write_text(code, encoding="utf-8")
 
-    code_path = os.path.join("tmp", "prog.minipar")
-    cmd = ["./minipar", code_path]
+        result = subprocess.run(
+            [str(MINIPAR_BIN), f"tmp/{filename}"],
+            cwd=str(MINIPAR_DIR),
+            input=(user_input + "\n") if user_input else "\n",
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+        )
 
-    process = subprocess.Popen(
-        cmd,
-        cwd=os.path.dirname(MINIPAR_PATH),
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        stdin=subprocess.PIPE,
-        text=True
-    )
+        stdout = result.stdout
+        stderr = result.stderr
+        if result.returncode != 0 and not stderr:
+            stderr = f"Processo terminou com código {result.returncode}"
+        return stdout, stderr
 
-    # Agora o processo continuará rodando e podemos enviar entradas a ele
-    # Enquanto o processo está em execução, vamos enviar o input do usuário
+    except subprocess.TimeoutExpired:
+        return "", "Tempo limite excedido (10s)"
 
-    # Envia o input do usuário
-    process.stdin.write(user_input + "\n")
-    process.stdin.flush()
+    except FileNotFoundError:
+        return "", f"Binário não encontrado: {MINIPAR_BIN}"
 
-    # Lê a saída do processo em tempo real
-    stdout = process.stdout
+    except Exception as e:
+        return "", f"Erro inesperado: {e}"
 
-    return stdout
+    finally:
+        # Limpeza garantida do arquivo temporário
+        try:
+            if code_file.exists():
+                code_file.unlink()
+        except OSError:
+            pass
 
 
-def main():
+def main() -> None:
     st.set_page_config(layout="wide")
 
     col1, col2 = st.columns(2)
 
     with col1:
         st.title("Editor de Código Minipar")
-        code_input = st.text_area(
-            "Minipar Editor", height=400, key="code_input")
+        code_input = st.text_area("Minipar Editor", height=400, key="code_input")
         user_input = st.text_input("Input para o programa", key="user_input")
         run_button = st.button("Executar")
 
@@ -61,13 +84,17 @@ def main():
         st.title("Saída")
         with st.container(border=True, height=600):
             if run_button:
-                # Pega o stream de saída em tempo real
-                process_output = exec_minipar_with_input(
-                    code_input, user_input)
+                ok, err = validate_code(code_input)
+                if not ok:
+                    st.error(err)
+                else:
+                    with st.spinner("Executando..."):
+                        stdout, stderr = exec_minipar(code_input, user_input)
+                    if stdout:
+                        st.text(stdout)
+                    if stderr:
+                        st.error(stderr)
 
-                # Exibe a saída em tempo real
-                for line in format_process_output(process_output):
-                    st.write(line)
 
-
-main()
+if __name__ == "__main__":
+    main()

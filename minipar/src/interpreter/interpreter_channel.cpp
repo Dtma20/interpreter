@@ -81,8 +81,12 @@ void Interpreter::run_server(SChannel *schannel)
     if ((server_fd = socket(AF_INET, SOCK_STREAM, 0)) == 0)
         throw RunTimeError("Erro ao criar socket para SChannel '" + name + "'");
 
-    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR | SO_REUSEPORT, &opt, sizeof(opt)))
-        throw RunTimeError("Erro ao configurar opções do socket para SChannel '" + name + "'");
+    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)))
+        throw RunTimeError("Erro ao configurar SO_REUSEADDR para SChannel '" + name + "'");
+#ifdef SO_REUSEPORT
+    if (setsockopt(server_fd, SOL_SOCKET, SO_REUSEPORT, &opt, sizeof(opt)))
+        throw RunTimeError("Erro ao configurar SO_REUSEPORT para SChannel '" + name + "'");
+#endif
 
     address.sin_family = AF_INET;
     address.sin_addr.s_addr = INADDR_ANY;
@@ -104,16 +108,42 @@ void Interpreter::run_server(SChannel *schannel)
             continue;
         }
 
-        read(client_fd, buffer, 1024);
-        std::string message(buffer);
+        ssize_t n = read(client_fd, buffer, sizeof(buffer) - 1);
+        if (n < 0) {
+            std::cerr << "Erro ao ler do cliente em SChannel '" << name << "'\n";
+            close(client_fd);
+            continue;
+        }
+        if (n == 0) {
+            close(client_fd);
+            continue;
+        }
+        buffer[n] = '\0';
+        std::string message(buffer, static_cast<size_t>(n));
         std::cout << "Mensagem recebida: " << message << "\n";
 
         Arguments args;
         args.push_back(std::make_unique<Constant>("STRING", Token("STRING", message)));
-        ValueWrapper result = execute_function(functions[func_name], args);
+        auto it = functions.find(func_name);
+        if (it == functions.end())
+            throw RunTimeError("Função '" + func_name + "' não encontrada para handler do canal");
+        ValueWrapper result = execute_function(it->second, args);
 
         std::string response = convert_value_to_string(result);
-        send(client_fd, response.c_str(), response.length(), 0);
+        // Partial-send-safe: loop until all bytes sent
+        {
+            const char *data = response.c_str();
+            ssize_t total = 0, len = static_cast<ssize_t>(response.length());
+            while (total < len) {
+                ssize_t sent = send(client_fd, data + total,
+                                    static_cast<size_t>(len - total), 0);
+                if (sent <= 0) {
+                    std::cerr << "Erro ao enviar resposta no SChannel '" << name << "'\n";
+                    break;
+                }
+                total += sent;
+            }
+        }
         std::cout << "Resposta enviada: " << response << "\n";
 
         close(client_fd);
@@ -168,7 +198,20 @@ void Interpreter::run_client(CChannel *cchannel)
             std::cerr << "CChannel '" << name << "': falha ao conectar, tentando novamente\n";
             continue;
         }
-        send(sock, message.c_str(), message.size(), 0);
+        // Partial-send-safe: loop until all bytes sent
+        {
+            const char *data = message.c_str();
+            ssize_t total = 0, len = static_cast<ssize_t>(message.size());
+            while (total < len) {
+                ssize_t sent = send(sock, data + total,
+                                    static_cast<size_t>(len - total), 0);
+                if (sent <= 0) {
+                    std::cerr << "CChannel '" << name << "': erro ao enviar\n";
+                    break;
+                }
+                total += sent;
+            }
+        }
         int n = read(sock, buffer, sizeof(buffer) - 1);
         if (n < 0)
         {

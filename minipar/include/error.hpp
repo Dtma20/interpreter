@@ -40,6 +40,7 @@ public:
      * @param msg Descrição do erro semântico.
      */
     explicit SemanticError(const std::string &msg);
+    SemanticError(int line, const std::string &msg);
 };
 
 /**

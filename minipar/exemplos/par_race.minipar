@@ -1,0 +1,24 @@
+# Teste C01: Par com mutex protege estado compartilhado
+# Scopes acessados sequencialmente via interpreter_mutex
+
+a: num = 0
+b: num = 0
+c: num = 0
+
+func set_a() -> void {
+    a = 100
+}
+func set_b() -> void {
+    b = 200
+}
+func set_c() -> void {
+    c = 300
+}
+
+par {
+    set_a()
+    set_b()
+    set_c()
+}
+
+print("C01 OK: a=", a, " b=", b, " c=", c, "\n")

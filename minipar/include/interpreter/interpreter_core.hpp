@@ -3,6 +3,7 @@
 
 #pragma once
 #include <map>
+#include <unordered_map>
 #include <mutex>
 #include <string>
 #include <vector>
@@ -24,7 +25,7 @@
   #include <netdb.h>
 #endif
 
-static std::mutex cout_mutex;
+extern std::mutex cout_mutex;
 
 /**
  * @brief Representa o valor de um canal de cliente.
@@ -118,15 +119,31 @@ class CChannelValue {
         }
     
         std::string recv_until(char delimiter = '\n') const {
-            std::string buffer;
-            char ch;
+            std::string result;
             while (true) {
-                ssize_t r = ::recv(sock_fd_, &ch, 1, 0);
-                if (r <= 0 || ch == delimiter)
-                    break;
-                buffer.push_back(ch);
+                // Drain buffered data first
+                if (read_pos_ < read_buffer_.size()) {
+                    size_t delim_pos = read_buffer_.find(delimiter, read_pos_);
+                    if (delim_pos != std::string::npos) {
+                        result.append(read_buffer_, read_pos_, delim_pos - read_pos_);
+                        read_pos_ = delim_pos + 1;
+                        return result;
+                    }
+                    result.append(read_buffer_, read_pos_, read_buffer_.size() - read_pos_);
+                    read_buffer_.clear();
+                    read_pos_ = 0;
+                }
+                // Refill
+                char block[4096];
+                ssize_t r = ::recv(sock_fd_, block, sizeof(block), 0);
+                if (r < 0) {
+                    throw std::runtime_error("CChannel: erro ao receber dados");
+                }
+                if (r == 0) {
+                    return result; // EOF: return what was accumulated
+                }
+                read_buffer_.append(block, static_cast<size_t>(r));
             }
-            return buffer;
         }
 
         const std::string& host() const noexcept { return host_; }
@@ -137,6 +154,8 @@ class CChannelValue {
         int         sock_fd_;
         std::string host_;
         uint16_t    port_;
+        mutable std::string read_buffer_;
+        mutable size_t read_pos_ = 0;
     };
 
 /**
@@ -153,8 +172,10 @@ struct ValueWrapper
     ValueWrapper(long double d) : data(d) {}
     ValueWrapper(bool b) : data(b) {}
     ValueWrapper(const std::string &s) : data(s) {}
+    ValueWrapper(std::string &&s) : data(std::move(s)) {}
     ValueWrapper(const char *s) : data(std::string(s)) {}
     ValueWrapper(const std::vector<ValueWrapper> &vec) : data(vec) {}
+    ValueWrapper(std::vector<ValueWrapper> &&vec) : data(std::move(vec)) {}
     ValueWrapper(std::shared_ptr<CChannelValue> cch) : data(cch) {}
 
     bool isInitialized() const
@@ -189,6 +210,21 @@ private:
     bool return_flag;
     ValueWrapper return_value;
 
+    // N5: Recursion depth guard
+    size_t recursion_depth = 0;
+    size_t max_recursion_depth = 1000;
+
+    struct DepthGuard {
+        Interpreter &interp;
+        explicit DepthGuard(Interpreter &i) : interp(i) {
+            if (++interp.recursion_depth > interp.max_recursion_depth) {
+                throw RunTimeError("Recursão máxima excedida (" +
+                    std::to_string(interp.max_recursion_depth) + ")");
+            }
+        }
+        ~DepthGuard() { interp.recursion_depth--; }
+    };
+
     ValueWrapper evaluate(Expression *expr);
     void execute_stmt(Node *stmt);
     ValueWrapper execute_function(FuncDef *func, const Arguments &args);
@@ -198,6 +234,18 @@ private:
     void run_server(SChannel *schannel);
     void run_client(CChannel *cchannel);
     std::string convert_value_to_string(const ValueWrapper &value);
+
+    /**
+     * @brief Snapshot isolado para um braço de `par`.
+     *
+     * Copia scopes/functions; valores de escopos externos continuam
+     * partilhados via shared_ptr (mutações visíveis no pai).
+     * Flags e profundidade de recursão são privados por thread.
+     */
+    Interpreter create_par_worker() const;
+
+    /** Executa um statement num worker isolado (usado pelos braços de `par`). */
+    void run_isolated_par_arm(Node *stmt);
 
     ValueWrapper evaluateConstant(Constant *constant);
     ValueWrapper evaluateID(ID *id);
@@ -228,6 +276,8 @@ private:
 public:
     Interpreter();
     void execute(Module *module);
+    void set_max_recursion_depth(size_t d) { max_recursion_depth = d; }
+    size_t get_max_recursion_depth() const { return max_recursion_depth; }
 };
 
 // Free functions

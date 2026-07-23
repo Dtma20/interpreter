@@ -32,13 +32,13 @@ public:
      * @brief Obtém a categoria (tag) do token.
      * @return String representando a categoria do token.
      */
-    std::string getTag() const;
+    const std::string& getTag() const;
 
     /**
      * @brief Obtém o valor do token.
      * @return String representando o valor do token.
      */
-    std::string getValue() const;
+    const std::string& getValue() const;
 
     /**
      * @brief Retorna uma representação em string do token.

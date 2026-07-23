@@ -1,0 +1,7 @@
+# Docs — only README files are versioned
+*.md
+!README.md
+!web/README.md
+
+# Graphify artifacts
+graphify-out/

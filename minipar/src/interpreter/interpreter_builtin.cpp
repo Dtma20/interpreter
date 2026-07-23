@@ -13,7 +13,14 @@
 #include <iomanip>
 #include <cmath>
 #include <algorithm>
+#include <random>
 #include "../../include/debug.hpp"
+
+// BLD3: thread-local seeded generator (thread-safe, não-determinístico)
+thread_local std::mt19937 rng([]() {
+    std::random_device rd;
+    return rd();
+}());
 
 ValueWrapper Interpreter::builtin_print(Call *call)
 {
@@ -139,7 +146,8 @@ ValueWrapper Interpreter::builtin_isnum(Call *call)
     if (std::holds_alternative<std::string>(arg.data))
     {
         std::string str = std::get<std::string>(arg.data);
-        bool result = std::all_of(str.begin(), str.end(), ::isdigit);
+        bool result = std::all_of(str.begin(), str.end(),
+            [](unsigned char c) { return std::isdigit(c); });
         LOG_DEBUG("Interpreter: isnum retornando: " << (result ? "true" : "false"));
         return ValueWrapper(result);
     }
@@ -158,7 +166,8 @@ ValueWrapper Interpreter::builtin_isalpha(Call *call)
     if (std::holds_alternative<std::string>(arg.data))
     {
         std::string str = std::get<std::string>(arg.data);
-        bool result = std::all_of(str.begin(), str.end(), ::isalpha);
+        bool result = std::all_of(str.begin(), str.end(),
+            [](unsigned char c) { return std::isalpha(c); });
         LOG_DEBUG("Interpreter: isalpha retornando: " << (result ? "true" : "false"));
         return ValueWrapper(result);
     }
@@ -193,7 +202,8 @@ ValueWrapper Interpreter::builtin_randf(Call *call)
     size_t numArgs = call->getArgs().size();
     if (numArgs == 0)
     {
-        long double random_val = static_cast<long double>(rand()) / static_cast<long double>(RAND_MAX);
+        std::uniform_real_distribution<long double> dist(0.0L, 1.0L);
+        long double random_val = dist(rng);
         LOG_DEBUG("Interpreter: random sem argumentos retornando: " << random_val);
         return ValueWrapper(random_val);
     }
@@ -203,7 +213,8 @@ ValueWrapper Interpreter::builtin_randf(Call *call)
         if (std::holds_alternative<long double>(arg.data))
         {
             long double max_val = std::get<long double>(arg.data);
-            long double random_val = (static_cast<long double>(rand()) / static_cast<long double>(RAND_MAX)) * max_val;
+            std::uniform_real_distribution<long double> dist(0.0L, max_val);
+            long double random_val = dist(rng);
             LOG_DEBUG("Interpreter: random com 1 argumento retornando: " << random_val);
             return ValueWrapper(random_val);
         }
@@ -221,7 +232,8 @@ ValueWrapper Interpreter::builtin_randf(Call *call)
         {
             long double min_val = std::get<long double>(arg1.data);
             long double max_val = std::get<long double>(arg2.data);
-            long double random_val = min_val + (static_cast<long double>(rand()) / static_cast<long double>(RAND_MAX)) * (max_val - min_val);
+            std::uniform_real_distribution<long double> dist(min_val, max_val);
+            long double random_val = dist(rng);
             LOG_DEBUG("Interpreter: random com 2 argumentos retornando: " << random_val);
             return ValueWrapper(random_val);
         }
@@ -244,7 +256,8 @@ ValueWrapper Interpreter::builtin_randi(Call *call)
 
     if (numArgs == 0)
     {
-        int random_int = rand() % 2;
+        std::uniform_int_distribution<int> dist(0, 1);
+        int random_int = dist(rng);
         LOG_DEBUG("Interpreter: randi() retornando: " << random_int);
         return ValueWrapper(static_cast<long double>(random_int));
     }
@@ -256,7 +269,8 @@ ValueWrapper Interpreter::builtin_randi(Call *call)
         int max_val = static_cast<int>(std::get<long double>(arg.data));
         if (max_val < 0)
             throw RunTimeError("randi: valor máximo deve ser ≥ 0");
-        int random_int = rand() % (max_val + 1);
+        std::uniform_int_distribution<int> dist(0, max_val);
+        int random_int = dist(rng);
         LOG_DEBUG("Interpreter: randi(max) retornando: " << random_int);
         return ValueWrapper(static_cast<long double>(random_int));
     }
@@ -271,8 +285,8 @@ ValueWrapper Interpreter::builtin_randi(Call *call)
         int max_val = static_cast<int>(std::get<long double>(arg2.data));
         if (max_val < min_val)
             throw RunTimeError("randi: max < min");
-        int span = max_val - min_val + 1;
-        int random_int = rand() % span + min_val;
+        std::uniform_int_distribution<int> dist(min_val, max_val);
+        int random_int = dist(rng);
         LOG_DEBUG("Interpreter: randi(min,max) retornando: " << random_int);
         return ValueWrapper(static_cast<long double>(random_int));
     }

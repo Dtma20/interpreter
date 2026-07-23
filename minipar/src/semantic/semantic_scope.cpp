@@ -8,6 +8,7 @@
 #include "../../include/semantic/semantic_core.hpp"
 #include "../../include/debug.hpp"
 #include <stdexcept>
+#include <unordered_set>
 
 /**
  * @brief Analisa uma declaração de array.
@@ -189,6 +190,17 @@ void SemanticAnalyzer::visit_FuncDef(FuncDef *node)
 
     scope_stack.emplace_back();
     LOG_DEBUG("SemanticAnalyzer: New function scope for " << fname);
+
+    // N4: Verificar parâmetros duplicados antes de inserir
+    {
+        std::unordered_set<std::string> seen_params;
+        for (auto &param : node->getParams()) {
+            if (seen_params.count(param.first)) {
+                throw SemanticError(node->getLine(), "Parâmetro duplicado: " + param.first);
+            }
+            seen_params.insert(param.first);
+        }
+    }
 
     for (auto &param : node->getParams()) {
         auto normalized_type = normalize(param.second.first);

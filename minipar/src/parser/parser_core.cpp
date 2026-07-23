@@ -3,13 +3,21 @@
  * @brief Implementação dos métodos fundamentais do Parser.
  *
  * Contém: construtor, match(), start(), program(), stmts(), block(),
- * params(), param(), args(), skipWhitespace(), peekNext().
+ * params(), param(), args(), peekNext().
  */
 
 #include "../../include/parser/parser_core.hpp"
 #include "../../include/debug.hpp"
+#include "../../include/error.hpp"
+#include "../../include/symtable.hpp"
+#include "../../include/ast/ast_statements.hpp"
 #include <stdexcept>
 #include <iostream>
+
+/**
+ * @brief Destrutor do Parser (definido aqui para shared_ptr<SymTable> com tipo incompleto no header).
+ */
+Parser::~Parser() = default;
 
 /**
  * @brief Construtor do Parser.
@@ -87,24 +95,12 @@ Body Parser::stmts()
     Body stmts;
     while (lookahead.getTag() != "EOF")
     {
-        skipWhitespace();
         if (lookahead.getTag() != "EOF")
         {
             stmts.push_back(stmt());
         }
     }
     return stmts;
-}
-
-/**
- * @brief Avança o parser ignorando tokens de espaço em branco e quebras de linha.
- */
-void Parser::skipWhitespace()
-{
-    while (lookahead.getTag() == "WHITESPACE" || lookahead.getTag() == "NEWLINE")
-    {
-        match(lookahead.getTag());
-    }
 }
 
 /**

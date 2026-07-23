@@ -11,6 +11,9 @@
 #include <cstring>
 #include <algorithm>
 #include <functional>
+#include <exception>
+#include <mutex>
+#include <vector>
 #include "../../include/debug.hpp"
 
 /**
@@ -58,6 +61,7 @@ void Interpreter::execute_stmt(Node *stmt)
                         size_t copy_size = std::min(arr.size(), new_elems.size());
                         for (size_t i = 0; i < copy_size; ++i)
                             arr[i] = new_elems[i];
+                        arr.resize(new_elems.size());
                     }
                     else
                     {
@@ -87,6 +91,7 @@ void Interpreter::execute_stmt(Node *stmt)
                                 size_t copy_size = std::min(arr.size(), new_elems.size());
                                 for (size_t i = 0; i < copy_size; ++i)
                                     arr[i] = new_elems[i];
+                                arr.resize(new_elems.size());
                             }
                             else
                             {
@@ -247,18 +252,40 @@ void Interpreter::execute_stmt(Node *stmt)
     }
     else if (auto *par = dynamic_cast<Par *>(stmt))
     {
+        // C01: cada braço corre num Interpreter isolado (snapshot de scopes).
+        // C02: exceções na thread são capturadas e re-lançadas após join.
         const auto &body = par->getBody();
         std::vector<std::thread> threads;
         threads.reserve(body.size());
 
-        static std::mutex cout_mutex;
+        std::mutex exception_mutex;
+        std::vector<std::exception_ptr> exceptions;
 
         for (const auto &uptr : body)
         {
-            threads.emplace_back([this, ptr = uptr.get()]()
-                                 {
-                execute_stmt(ptr);
-                std::lock_guard<std::mutex> lk(cout_mutex); });
+            threads.emplace_back([this, ptr = uptr.get(), &exception_mutex, &exceptions]() {
+                try
+                {
+                    run_isolated_par_arm(ptr);
+                }
+                catch (const RunTimeError &)
+                {
+                    std::lock_guard<std::mutex> lk(exception_mutex);
+                    exceptions.push_back(std::current_exception());
+                }
+                catch (const std::exception &e)
+                {
+                    std::lock_guard<std::mutex> lk(exception_mutex);
+                    exceptions.push_back(std::make_exception_ptr(
+                        RunTimeError(std::string("Erro em thread par: ") + e.what())));
+                }
+                catch (...)
+                {
+                    std::lock_guard<std::mutex> lk(exception_mutex);
+                    exceptions.push_back(std::make_exception_ptr(
+                        RunTimeError("Erro desconhecido em thread par")));
+                }
+            });
         }
 
         for (auto &t : threads)
@@ -266,6 +293,9 @@ void Interpreter::execute_stmt(Node *stmt)
             if (t.joinable())
                 t.join();
         }
+
+        if (!exceptions.empty())
+            std::rethrow_exception(exceptions.front());
     }
     else if (auto *seq = dynamic_cast<Seq *>(stmt))
     {

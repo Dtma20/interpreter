@@ -25,24 +25,34 @@ ValueWrapper Interpreter::evaluateFunctionCall(Call *call)
     std::string func_name = call->getBase()->getToken().getValue();
     LOG_DEBUG("Interpreter: Avaliando chamada de função: " << func_name);
 
-    // Builtin functions
-    if (func_name == "print")       return builtin_print(call);
-    if (func_name == "len")         return builtin_len(call);
-    if (func_name == "to_num")      return builtin_to_num(call);
-    if (func_name == "to_string")   return builtin_to_string(call);
-    if (func_name == "isnum")       return builtin_isnum(call);
-    if (func_name == "isalpha")     return builtin_isalpha(call);
-    if (func_name == "exp")         return builtin_exp(call);
-    if (func_name == "randf")       return builtin_randf(call);
-    if (func_name == "randi")       return builtin_randi(call);
-    if (func_name == "input")       return builtin_input(call);
-    if (func_name == "send")        return builtin_send(call);
-    if (func_name == "close")       return builtin_close(call);
+    // Builtin dispatch via static hash map — O(1) lookup, single init
+    using BuiltinPtr = ValueWrapper (Interpreter::*)(Call*);
+    static const std::unordered_map<std::string, BuiltinPtr> builtins = {
+        {"print",     &Interpreter::builtin_print},
+        {"len",       &Interpreter::builtin_len},
+        {"to_num",    &Interpreter::builtin_to_num},
+        {"to_string", &Interpreter::builtin_to_string},
+        {"isnum",     &Interpreter::builtin_isnum},
+        {"isalpha",   &Interpreter::builtin_isalpha},
+        {"exp",       &Interpreter::builtin_exp},
+        {"randf",     &Interpreter::builtin_randf},
+        {"randi",     &Interpreter::builtin_randi},
+        {"input",     &Interpreter::builtin_input},
+        {"send",      &Interpreter::builtin_send},
+        {"close",     &Interpreter::builtin_close},
+    };
+
+    auto bit = builtins.find(func_name);
+    if (bit != builtins.end())
+    {
+        return (this->*(bit->second))(call);
+    }
 
     // User-defined function
-    if (functions.find(func_name) != functions.end())
+    auto it = functions.find(func_name);
+    if (it != functions.end())
     {
-        ValueWrapper result = execute_function(functions[func_name], call->getArgs());
+        ValueWrapper result = execute_function(it->second, call->getArgs());
         LOG_DEBUG("Interpreter: Função definida pelo usuário " << func_name << " retornou valor");
         return result;
     }
@@ -60,6 +70,8 @@ ValueWrapper Interpreter::evaluateFunctionCall(Call *call)
  */
 ValueWrapper Interpreter::execute_function(FuncDef *func, const Arguments &args)
 {
+    DepthGuard depth_guard(*this); // N5: RAII recursion limit check
+
     push_scope();
 
     const auto &params = func->getParams();

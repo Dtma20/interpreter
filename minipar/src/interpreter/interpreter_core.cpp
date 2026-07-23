@@ -17,6 +17,9 @@
 #include <iomanip>
 #include <cmath>
 #include "../../include/debug.hpp"
+
+std::mutex cout_mutex;
+
 #ifdef _WIN32
   #include <winsock2.h>
   #include <ws2tcpip.h>
@@ -83,6 +86,34 @@ Interpreter::Interpreter() : break_flag(false), continue_flag(false), return_fla
 {
     LOG_DEBUG("Interpreter: Construtor chamado, inicializando flags e escopo");
     push_scope();
+}
+
+/**
+ * @brief Cria um worker isolado para um braço de `par` (C01).
+ *
+ * Cada thread recebe a sua própria pilha de scopes e flags. Os
+ * ValueWrappers dos scopes externos são partilhados via shared_ptr,
+ * por isso atribuições a variáveis já existentes ficam visíveis no
+ * interpretador pai sem partilhar o contentor `scopes` (data race).
+ */
+Interpreter Interpreter::create_par_worker() const
+{
+    Interpreter worker;
+    worker.scopes = scopes;
+    worker.functions = functions;
+    worker.max_recursion_depth = max_recursion_depth;
+    worker.break_flag = false;
+    worker.continue_flag = false;
+    worker.return_flag = false;
+    worker.return_value = ValueWrapper();
+    worker.recursion_depth = 0;
+    return worker;
+}
+
+void Interpreter::run_isolated_par_arm(Node *stmt)
+{
+    Interpreter worker = create_par_worker();
+    worker.execute_stmt(stmt);
 }
 
 /**

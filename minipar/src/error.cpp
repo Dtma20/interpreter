@@ -24,6 +24,11 @@ SyntaxError::SyntaxError(int line, const std::string &msg)
 SemanticError::SemanticError(const std::string &msg)
     : std::runtime_error(msg) {}
 
+SemanticError::SemanticError(int line, const std::string &msg)
+    : std::runtime_error(line > 0
+                             ? ("linha " + std::to_string(line) + ": " + msg)
+                             : msg) {}
+
 /**
  * @brief Construtor para exceção de erro em tempo de execução.
  *

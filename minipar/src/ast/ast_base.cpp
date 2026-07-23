@@ -4,17 +4,17 @@
 Expression::Expression(const std::string &type, const Token &token)
     : type(type), token(token) {}
 
-std::string Expression::getType() const
+const std::string& Expression::getType() const
 {
     return type;
 }
 
-Token Expression::getToken() const
+const Token& Expression::getToken() const
 {
     return token;
 }
 
-std::string Expression::getName() const
+const std::string& Expression::getName() const
 {
     return token.getValue();
 }

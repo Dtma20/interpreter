@@ -106,6 +106,7 @@ ValueWrapper Interpreter::evaluateID(ID *id)
 ValueWrapper Interpreter::evaluateArray(Array *array)
 {
     std::vector<ValueWrapper> elements;
+    elements.reserve(array->getElements().size());
     for (const auto &elem : array->getElements())
     {
         if (!elem)
@@ -120,10 +121,10 @@ ValueWrapper Interpreter::evaluateArray(Array *array)
             throw RunTimeError("Elemento do array não inicializado");
         }
         LOG_DEBUG("Interpreter: Elemento avaliado: " << convert_value_to_string(elem_value));
-        elements.push_back(elem_value);
+        elements.push_back(std::move(elem_value));
     }
     LOG_DEBUG("Interpreter: Array avaliado com " << elements.size() << " elementos");
-    return ValueWrapper(elements);
+    return ValueWrapper(std::move(elements));
 }
 
 /**
@@ -156,7 +157,7 @@ ValueWrapper Interpreter::evaluateAccess(Access *access)
     else if (std::holds_alternative<std::string>(base_val.data) &&
              std::holds_alternative<long double>(index_val.data))
     {
-        std::string str = std::get<std::string>(base_val.data);
+        const std::string& str = std::get<std::string>(base_val.data);
         int index = static_cast<int>(std::get<long double>(index_val.data));
         LOG_DEBUG("Interpreter: Acesso a string '" << str << "' no índice: " << index);
         if (index >= 0 && index < static_cast<int>(str.length()))

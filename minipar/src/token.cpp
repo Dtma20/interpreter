@@ -23,14 +23,14 @@ Token::Token(const std::string &tag, const std::string &value) : tag(tag), value
  *
  * @return A tag (tipo) do token.
  */
-std::string Token::getTag() const { return tag; }
+const std::string& Token::getTag() const { return tag; }
 
 /**
  * @brief Retorna o valor do token.
  *
  * @return O valor textual do token.
  */
-std::string Token::getValue() const { return value; }
+const std::string& Token::getValue() const { return value; }
 
 /**
  * @brief Converte o token para uma representação em string.

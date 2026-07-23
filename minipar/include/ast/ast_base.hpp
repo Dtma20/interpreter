@@ -63,11 +63,13 @@ class Node
 {
 public:
     virtual ~Node() = default;
-    /**
-     * @brief Retorna os atributos filhos deste nó.
-     * @return Vetor de ponteiros para os nós atributos.
-     */
     virtual std::vector<Node *> getAttributes() = 0;
+
+    int getLine() const { return line_; }
+    void setLine(int l) { line_ = l; }
+
+protected:
+    int line_ = 0;
 };
 
 /**
@@ -82,9 +84,9 @@ public:
     Expression(const std::string &type, const Token &token);
     virtual ~Expression() = default;
 
-    std::string getType() const;
-    Token getToken() const;
-    std::string getName() const;
+    const std::string& getType() const;
+    const Token& getToken() const;
+    const std::string& getName() const;
 
 protected:
     std::string type;
