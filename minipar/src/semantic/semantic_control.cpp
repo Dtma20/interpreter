@@ -59,6 +59,7 @@ void SemanticAnalyzer::visit_Return(Return *node)
 void SemanticAnalyzer::visit_If(If *node)
 {
     LOG_DEBUG("SemanticAnalyzer: visit_If");
+    context_stack.push_back(node); // T19: function in local scope guard
     std::string cond = evaluate(node->getCondition());
     LOG_DEBUG("SemanticAnalyzer: if condition type " << cond);
     if (cond != "bool")
@@ -72,6 +73,7 @@ void SemanticAnalyzer::visit_If(If *node)
         visit_block(*node->getElseStmt());
         scope_stack.pop_back();
     }
+    context_stack.pop_back();
     LOG_DEBUG("SemanticAnalyzer: visit_If end");
 }
 
@@ -135,11 +137,13 @@ void SemanticAnalyzer::visit_Continue(Continue *node)
 void SemanticAnalyzer::visit_Par(Par *node)
 {
     LOG_DEBUG("SemanticAnalyzer: visit_Par");
+    context_stack.push_back(node); // T19: function in local scope guard
     for (auto &st : node->getBody())
     {
         if (!dynamic_cast<Call *>(st.get()))
             throw SemanticError(node->getLine(), "Apenas chamadas válidas em par");
     }
+    context_stack.pop_back();
     LOG_DEBUG("SemanticAnalyzer: visit_Par end");
 }
 

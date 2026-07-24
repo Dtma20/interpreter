@@ -1,0 +1,12 @@
+# Teste C02: excecao em thread par nao causa std::terminate
+# Excecao capturada, agregada, re-lancada apos join
+
+func erro() -> void {
+    x: num = to_num("nao_eh_numero")
+}
+
+par {
+    erro()
+}
+
+print("C02 OK: nao chegou aqui (excecao relancada)\n")

@@ -130,7 +130,7 @@ std::unique_ptr<Node> Parser::processArrayAccessStmt(const std::string &id_name)
         return unary;
     }
     if (match("ASSIGN")) {
-        auto right = arithmetic();
+        auto right = disjunction(); // T17: RHS aceita bool/relacional
         return std::make_unique<Assign>(std::move(current_access), std::move(right));
     }
     return current_access;
@@ -150,7 +150,7 @@ std::unique_ptr<Node> Parser::processPostfixUnaryStmt(const std::string &id_name
 std::unique_ptr<Node> Parser::processSimpleAssignStmt(const std::string &id_name)
 {
     match("ASSIGN");
-    auto right = arithmetic();
+    auto right = disjunction(); // T17: RHS aceita bool/relacional
     auto id = std::make_unique<ID>("", Token("ID", id_name));
     return std::make_unique<Assign>(std::move(id), std::move(right));
 }

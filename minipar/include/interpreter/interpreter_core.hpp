@@ -113,6 +113,7 @@ private:
     };
 
     std::vector<Scope> scopes;
+    size_t scope_base = 0; // T15: lexical scoping — busca restrita a [scope_base, end) + global[0]
     std::map<std::string, FuncDef *> functions;
     bool break_flag;
     bool continue_flag;
@@ -148,6 +149,9 @@ private:
     ValueWrapper execute_function(FuncDef *func, const Arguments &args);
     void push_scope();
     void pop_scope();
+
+    // T15: lexical scope lookup — search [scope_base, end) + global[0]
+    std::shared_ptr<ValueWrapper> find_in_scope(const std::string &name);
     bool is_true(const ValueWrapper &value);
     void run_server(SChannel *schannel);
     void run_client(CChannel *cchannel);
@@ -207,5 +211,8 @@ std::ostream &operator<<(std::ostream &os, const ValueWrapper &v);
 // Rejeita não-finito, fracionário, negativo, overflow.
 size_t  to_index(long double value, const char *context);
 uint16_t to_port(long double value, const char *context);
+
+// T21: formatação numérica única, usada por print() e to_string().
+std::string format_number(long double val);
 
 #endif // INTERPRETER_CORE_HPP

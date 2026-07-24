@@ -1,0 +1,12 @@
+n: num = 6
+a: num = 0
+b: num = 1
+c: num = 0
+
+for(i: num = 1; i < n; i++) {
+    c = a + b
+    a = b
+    b = c
+}
+
+print(c, "\n")

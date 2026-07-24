@@ -1,0 +1,2 @@
+# T19: print(indefinido) como statement deve gerar SemanticError
+print(indefinido)

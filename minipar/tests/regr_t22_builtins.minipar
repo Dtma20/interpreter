@@ -1,0 +1,7 @@
+# T22: builtins válidos — exp, randf, randi reconhecidos
+print(exp(0))
+print(randf(0, 1))
+print(randi(1, 10))
+print(to_num("3.14"))
+print(to_string(42))
+print(len("abc"))

@@ -30,4 +30,7 @@ debug: run
 clean:
 	rm -f $(OBJ) minipar *.d src/*.d src/*/*.d
 
-.PHONY: run debug clean
+test:
+	@bash tests/run_tests.sh
+
+.PHONY: run debug clean test

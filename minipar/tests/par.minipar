@@ -1,0 +1,22 @@
+n: num = to_num(input("Digite um número: "))
+
+fat: array[n + 1]
+fat[0] = 1
+fat[1] = 1
+
+for(i: num = 2; i <= n; i++) {
+	fat[i] = fat[i - 1] * i
+}
+
+fib: array[n + 1]
+fib[0] = 0
+fib[1] = 1
+for(i: num = 2; i <= n; i++) {
+	fib[i] = fib[i - 1] + fib[i - 2]
+}
+
+par {
+	print(fib, "\n")
+	print(fat, "\n")
+	print("Hello, Wolrd!!\n")
+}

@@ -62,11 +62,11 @@ std::unique_ptr<Node> Parser::processTypeDeclarationStmt(const std::string &id_n
         if (lookahead.getTag() == "ASSIGN")
         {
             match("ASSIGN");
-            auto right = arithmetic();
+            auto right = disjunction(); // T17: RHS aceita bool/relacional
             auto array_decl = std::make_unique<ArrayDecl>(id_name, std::move(dimensions));
             auto assign = std::make_unique<Assign>(
                 std::make_unique<ID>("ID", Token("ID", id_name)),
-                std::move(right));
+                std::move(right), true, "array");
             Body seq_body;
             seq_body.push_back(std::move(array_decl));
             seq_body.push_back(std::move(assign));
@@ -81,8 +81,8 @@ std::unique_ptr<Node> Parser::processTypeDeclarationStmt(const std::string &id_n
             throw SyntaxError(lineno, "Esperado um tipo após ':' em lugar de " + lookahead.getValue());
         if (!match("ASSIGN"))
             throw SyntaxError(lineno, "Esperado '=' após tipo em lugar de " + lookahead.getValue());
-        auto right = arithmetic();
+        auto right = disjunction(); // T17: RHS aceita bool/relacional
         auto id = std::make_unique<ID>(type, Token("ID", id_name), true);
-        return std::make_unique<Assign>(std::move(id), std::move(right));
+        return std::make_unique<Assign>(std::move(id), std::move(right), true, type);
     }
 }

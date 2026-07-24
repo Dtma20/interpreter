@@ -9,23 +9,18 @@
 
 #include "../../include/semantic/semantic_core.hpp"
 #include "../../include/debug.hpp"
+#include "../../include/builtin_table.hpp"
 #include <stdexcept>
 #include <algorithm>
 
-static const std::unordered_map<std::string, std::string> builtin_return = {
-    {"print", "string"},
-    {"len", "num"},
-    {"to_num", "num"},
-    {"to_string", "string"},
-    {"isnum", "bool"},
-    {"isalpha", "bool"},
-    {"exp", "num"},
-    {"randf", "num"},
-    {"randi", "num"},
-    {"input", "string"},
-    {"send", "string"},
-    {"close", "void"},
-};
+// T22: derivada da fonte única BUILTIN_TABLE (include/builtin_table.hpp).
+static const std::unordered_map<std::string, std::string> builtin_return = []
+{
+    std::unordered_map<std::string, std::string> m;
+    for (const auto &b : BUILTIN_TABLE)
+        m.emplace(b.name, b.return_type);
+    return m;
+}();
 
 /**
  * @brief Analisa uma constante.
@@ -179,7 +174,13 @@ std::optional<std::string> SemanticAnalyzer::visit_Call(const Call *node) const
     }
 
     if (builtin_return.count(fname))
+    {
+        // T19: builtins não têm tabela de parâmetros, mas os argumentos ainda
+        // precisam ser avaliados para pegar ID não declarado/tipo inválido em tempo de análise.
+        for (auto &arg : node->getArgs())
+            evaluate(arg.get());
         return builtin_return.at(fname);
+    }
 
     if (!function_table.count(fname))
         throw SemanticError(node->getLine(), "Função não declarada: " + fname);
@@ -203,7 +204,7 @@ std::optional<std::string> SemanticAnalyzer::visit_Call(const Call *node) const
 
         if (declaredRaw == "array")
         {
-            if (actual.rfind("array<", 0) != 0)
+            if (actual != "array" && actual.rfind("array<", 0) != 0)
                 throw SemanticError(node->getLine(),
                                     "Argumento " + std::to_string(i + 1) + " de " + fname +
                                         " deve ser um array, mas recebeu " + actual);

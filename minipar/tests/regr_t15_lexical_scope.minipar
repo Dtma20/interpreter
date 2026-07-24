@@ -1,0 +1,9 @@
+x: num = 1
+func f()->num{
+    return x
+}
+func g()->num{
+    x: num = 99
+    return f()
+}
+print(g())

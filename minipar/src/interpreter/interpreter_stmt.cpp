@@ -46,6 +46,55 @@ void Interpreter::execute_stmt(Node *stmt)
         if (auto *id = dynamic_cast<ID *>(left))
         {
             const std::string var_name = id->getToken().getValue();
+
+            // T16: declaration — create in current scope; if exists in outer lexical scope, reassign instead
+            if (assign->isDeclaration() || id->isDecl())
+            {
+                auto &current = scopes.back();
+                auto var_it = current.variables.find(var_name);
+                if (var_it != current.variables.end()) {
+                    // Variable already in current scope — reassign
+                    auto &dataVar = var_it->second->data;
+                    if (std::holds_alternative<std::vector<ValueWrapper>>(dataVar)) {
+                        auto &arr = std::get<std::vector<ValueWrapper>>(dataVar);
+                        if (std::holds_alternative<std::vector<ValueWrapper>>(value.data)) {
+                            const auto &new_elems = std::get<std::vector<ValueWrapper>>(value.data);
+                            size_t copy_size = std::min(arr.size(), new_elems.size());
+                            for (size_t i = 0; i < copy_size; ++i) arr[i] = new_elems[i];
+                            arr.resize(new_elems.size());
+                        } else {
+                            *(var_it->second) = value;
+                        }
+                    } else {
+                        *(var_it->second) = value;
+                    }
+                } else {
+                    // T15+T16: search current scope + base (function/global) only
+                    // Skip intermediate block scopes → sibling blocks shadow each other
+                    if (scope_base < scopes.size()) {
+                        auto vit = scopes[scope_base].variables.find(var_name);
+                        if (vit != scopes[scope_base].variables.end())
+                        {
+                            auto &dataVar = vit->second->data;
+                            if (std::holds_alternative<std::vector<ValueWrapper>>(dataVar)) {
+                                auto &arr = std::get<std::vector<ValueWrapper>>(dataVar);
+                                if (std::holds_alternative<std::vector<ValueWrapper>>(value.data)) {
+                                    const auto &new_elems = std::get<std::vector<ValueWrapper>>(value.data);
+                                    size_t copy_size = std::min(arr.size(), new_elems.size());
+                                    for (size_t j = 0; j < copy_size; ++j) arr[j] = new_elems[j];
+                                    arr.resize(new_elems.size());
+                                } else { *(vit->second) = value; }
+                            } else { *(vit->second) = value; }
+                            goto decl_done;
+                        }
+                    }
+                    // Not found in base scope → create new shadow in current scope
+                    scopes.back().variables[var_name] = std::make_shared<ValueWrapper>(value);
+                    decl_done:;
+                }
+            }
+            else
+            {
             auto &current = scopes.back();
             auto var_it = current.variables.find(var_name);
 
@@ -75,42 +124,38 @@ void Interpreter::execute_stmt(Node *stmt)
             }
             else
             {
-                bool updated = false;
-                for (auto it = scopes.rbegin(); it != scopes.rend(); ++it)
+                // T15: lexical scope reassignment
+                auto ptr = find_in_scope(var_name);
+                if (ptr)
                 {
-                    auto vit = it->variables.find(var_name);
-                    if (vit != it->variables.end())
+                    auto &dataVar = ptr->data;
+                    if (std::holds_alternative<std::vector<ValueWrapper>>(dataVar))
                     {
-                        auto &dataVar = vit->second->data;
-                        if (std::holds_alternative<std::vector<ValueWrapper>>(dataVar))
+                        auto &arr = std::get<std::vector<ValueWrapper>>(dataVar);
+                        if (std::holds_alternative<std::vector<ValueWrapper>>(value.data))
                         {
-                            auto &arr = std::get<std::vector<ValueWrapper>>(dataVar);
-                            if (std::holds_alternative<std::vector<ValueWrapper>>(value.data))
-                            {
-                                const auto &new_elems = std::get<std::vector<ValueWrapper>>(value.data);
-                                size_t copy_size = std::min(arr.size(), new_elems.size());
-                                for (size_t i = 0; i < copy_size; ++i)
-                                    arr[i] = new_elems[i];
-                                arr.resize(new_elems.size());
-                            }
-                            else
-                            {
-                                throw RunTimeError("Tentativa de atribuir valor não-array a um array existente");
-                            }
+                            const auto &new_elems = std::get<std::vector<ValueWrapper>>(value.data);
+                            size_t copy_size = std::min(arr.size(), new_elems.size());
+                            for (size_t i = 0; i < copy_size; ++i)
+                                arr[i] = new_elems[i];
+                            arr.resize(new_elems.size());
                         }
                         else
                         {
-                            *(vit->second) = value;
+                            throw RunTimeError("Tentativa de atribuir valor não-array a um array existente");
                         }
-                        updated = true;
-                        break;
+                    }
+                    else
+                    {
+                        *ptr = value;
                     }
                 }
-                if (!updated)
+                else
                 {
                     scopes.back().variables[var_name] = std::make_shared<ValueWrapper>(value);
                 }
             }
+            } // T16: end else (reassignment) block
         }
         else if (auto *access = dynamic_cast<Access *>(left))
         {
@@ -311,7 +356,18 @@ void Interpreter::execute_stmt(Node *stmt)
                 e = make_arr(d, lvl + 1);
             return ValueWrapper(vec);
         };
-        scopes.back().variables[var_name] = std::make_shared<ValueWrapper>(make_arr(dims, 0));
+        try
+        {
+            scopes.back().variables[var_name] = std::make_shared<ValueWrapper>(make_arr(dims, 0));
+        }
+        catch (const std::bad_alloc &)
+        {
+            throw RunTimeError("Array '" + var_name + "': dimensão excede memória disponível");
+        }
+        catch (const std::length_error &)
+        {
+            throw RunTimeError("Array '" + var_name + "': dimensão excede o tamanho máximo suportado");
+        }
     }
     else
     {

@@ -1,0 +1,9 @@
+# T16: for aninhado com índice homônimo — i interno não zera externo
+# Bug: i interno sobrescreve externo → loop infinito
+outer: num = 0
+for(i: num = 0; i < 3; i = i + 1){
+    for(i: num = 0; i < 2; i = i + 1){
+        outer = outer + 1
+    }
+}
+print(outer)

@@ -1,0 +1,5 @@
+# T19: func dentro de if deve ser rejeitado
+x: num = 1
+if(x == 1){
+    func f()->void{}
+}

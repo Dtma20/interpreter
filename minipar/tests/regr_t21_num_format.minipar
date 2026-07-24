@@ -1,0 +1,6 @@
+# T21: formatação de inteiro grande, print vs to_string
+x: num = 9999999999
+s: string = to_string(x)
+print(x)
+print(s)
+print(to_string(0))

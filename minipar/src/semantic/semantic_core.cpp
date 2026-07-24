@@ -165,6 +165,16 @@ void SemanticAnalyzer::visit(Node *node)
         LOG_DEBUG("SemanticAnalyzer: visit ArrayDecl " << arrDecl->getName());
         visit_ArrayDecl(arrDecl);
     }
+    else if (auto call = dynamic_cast<Call *>(node))
+    {
+        LOG_DEBUG("SemanticAnalyzer: visit Call");
+        evaluate(call); // T19: force semantic check on call-as-statement
+    }
+    else if (auto un = dynamic_cast<Unary *>(node))
+    {
+        LOG_DEBUG("SemanticAnalyzer: visit Unary");
+        evaluate(un); // T19: force semantic check on unary-as-statement (++/--)
+    }
     else
     {
         LOG_DEBUG("SemanticAnalyzer: generic_visit on " << typeid(*node).name());

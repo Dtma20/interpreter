@@ -59,7 +59,16 @@ ValueWrapper Interpreter::evaluateConstant(Constant *constant)
 
     if (typeStr == "NUM")
     {
-        long double num = std::stod(valueStr);
+        long double num;
+        try
+        {
+            num = std::stold(valueStr);
+        }
+        catch (const std::exception &e)
+        {
+            throw RunTimeError("Literal numérico inválido na linha " + std::to_string(constant->getLine()) +
+                               ": '" + valueStr + "' (" + e.what() + ")");
+        }
         LOG_DEBUG("Interpreter: Convertendo num para long double: " << num);
         return ValueWrapper(num);
     }
@@ -87,15 +96,13 @@ ValueWrapper Interpreter::evaluateID(ID *id)
 {
     std::string var_name = id->getToken().getValue();
     LOG_DEBUG("Interpreter: Avaliando ID: " << var_name);
-    for (auto it = scopes.rbegin(); it != scopes.rend(); ++it)
-    {
-        auto var_it = it->variables.find(var_name);
-        if (var_it != it->variables.end())
-        {
-            LOG_DEBUG("Interpreter: Variável " << var_name << " encontrada no escopo atual");
-            return *(var_it->second);
-        }
+
+    auto ptr = find_in_scope(var_name);
+    if (ptr) {
+        LOG_DEBUG("Interpreter: Variável " << var_name << " encontrada");
+        return *ptr;
     }
+
     LOG_DEBUG("Interpreter: Erro, variável não definida: " << var_name);
     throw RunTimeError("Variável não definida: " + var_name);
 }
@@ -152,17 +159,9 @@ ValueWrapper* Interpreter::resolveAccessLvalue(Access *access)
 
     std::string var_name = id->getToken().getValue();
 
-    // Busca variavel nos escopos
-    ValueWrapper *var = nullptr;
-    for (auto it = scopes.rbegin(); it != scopes.rend(); ++it)
-    {
-        auto var_it = it->variables.find(var_name);
-        if (var_it != it->variables.end())
-        {
-            var = var_it->second.get();
-            break;
-        }
-    }
+    // T15: lexical scope lookup
+    auto ptr = find_in_scope(var_name);
+    ValueWrapper *var = ptr ? ptr.get() : nullptr;
     if (!var) return nullptr;
 
     // Apenas arrays — strings caem no fallback com mensagem original
@@ -278,6 +277,13 @@ ValueWrapper Interpreter::evaluateRelational(Relational *relational)
         if (op == "EQ") return ValueWrapper(left_num == right_num);
         if (op == "NEQ") return ValueWrapper(left_num != right_num);
     }
+    else if (std::holds_alternative<bool>(left_value.data) && std::holds_alternative<bool>(right_value.data))
+    {
+        bool left_b = std::get<bool>(left_value.data);
+        bool right_b = std::get<bool>(right_value.data);
+        if (op == "EQ") return ValueWrapper(left_b == right_b);
+        if (op == "NEQ") return ValueWrapper(left_b != right_b);
+    }
     else if (std::holds_alternative<std::string>(left_value.data) &&
              std::holds_alternative<std::string>(right_value.data))
     {
@@ -324,6 +330,11 @@ ValueWrapper Interpreter::evaluateArithmetic(Arithmetic *arithmetic)
             return ValueWrapper(left_num / right_num);
         }
     }
+    else if (std::holds_alternative<std::string>(left_value.data) && std::holds_alternative<std::string>(right_value.data))
+    {
+        if (op == "+")
+            return ValueWrapper(std::get<std::string>(left_value.data) + std::get<std::string>(right_value.data));
+    }
     LOG_DEBUG("Interpreter: Erro, tipos inválidos para operador aritmético: " << op);
     throw RunTimeError("Operador aritmético '" + op + "' requer operandos numéricos");
 }
@@ -350,16 +361,8 @@ ValueWrapper Interpreter::evaluateUnary(Unary *unary)
         if (auto *id = dynamic_cast<ID *>(operand))
         {
             std::string var_name = id->getToken().getValue();
-            ValueWrapper *var_ptr = nullptr;
-            for (auto it = scopes.rbegin(); it != scopes.rend(); ++it)
-            {
-                auto var_it = it->variables.find(var_name);
-                if (var_it != it->variables.end())
-                {
-                    var_ptr = var_it->second.get();
-                    break;
-                }
-            }
+            auto ptr = find_in_scope(var_name);
+            ValueWrapper *var_ptr = ptr ? ptr.get() : nullptr;
             if (!var_ptr)
                 throw RunTimeError("Variável não definida: " + var_name);
             if (!std::holds_alternative<long double>(var_ptr->data))

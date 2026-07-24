@@ -1,4 +1,5 @@
 #include "../include/token.hpp"
+#include "../include/builtin_table.hpp"
 #include <regex>
 
 /**
@@ -90,19 +91,14 @@ const std::unordered_set<std::string> STATEMENT_TOKENS = {
  * Mapeia o nome das funções padrão para o tipo de retorno esperado.
  * Essas funções são automaticamente registradas no ambiente.
  */
-const std::unordered_map<std::string, std::string> DEFAULT_FUNCTION_NAMES = {
-    {"print", "VOID"},
-    {"input", "STRING"},
-    {"sleep", "VOID"},
-    {"to_number", "NUMBER"},
-    {"to_string", "STRING"},
-    {"to_bool", "BOOL"},
-    {"send", "STRING"},
-    {"close", "VOID"},
-    {"len", "NUMBER"},
-    {"isalpha", "BOOL"},
-    {"isnum", "BOOL"},
-};
+// T22: derivada da fonte única BUILTIN_TABLE (include/builtin_table.hpp).
+const std::unordered_map<std::string, std::string> DEFAULT_FUNCTION_NAMES = []
+{
+    std::unordered_map<std::string, std::string> m;
+    for (const auto &b : BUILTIN_TABLE)
+        m.emplace(b.name, b.return_type);
+    return m;
+}();
 
 /**
  * @brief Expressão regular combinada para tokens.

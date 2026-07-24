@@ -140,6 +140,26 @@ void Interpreter::pop_scope()
     }
 }
 
+// T15: lexical scoping — search [scope_base, scopes.size()) then global[0]
+std::shared_ptr<ValueWrapper> Interpreter::find_in_scope(const std::string &name)
+{
+    // Search local frame: from innermost (back) to scope_base (inclusive)
+    for (size_t i = scopes.size(); i-- > scope_base; )
+    {
+        auto it = scopes[i].variables.find(name);
+        if (it != scopes[i].variables.end())
+            return it->second;
+    }
+    // Search global scope (index 0) if not already covered
+    if (scope_base > 0)
+    {
+        auto it = scopes[0].variables.find(name);
+        if (it != scopes[0].variables.end())
+            return it->second;
+    }
+    return nullptr;
+}
+
 /**
  * @brief Verifica o "valor de verdade" de um ValueWrapper.
  */
@@ -185,14 +205,7 @@ std::string Interpreter::convert_value_to_string(const ValueWrapper &value)
          using T = std::decay_t<decltype(val)>;
          if constexpr (std::is_same_v<T, long double>)
          {
-             if (std::fabs(val - std::round(val)) < 1e-9)
-                 return std::to_string(static_cast<int>(std::round(val)));
-             else
-             {
-                 std::ostringstream oss;
-                 oss << val;
-                 return oss.str();
-             }
+             return format_number(val); // T21: sem cast a int, coerente com print()
          }
          else if constexpr (std::is_same_v<T, std::string>)
          {
@@ -345,4 +358,15 @@ uint16_t to_port(long double value, const char *context)
         throw RunTimeError(std::string(context) + " deve estar entre 1 e 65535, recebeu " + buf);
     }
     return static_cast<uint16_t>(value);
+}
+
+std::string format_number(long double val)
+{
+    constexpr long double epsilon = 1e-9L;
+    std::ostringstream oss;
+    if (std::fabs(val - std::trunc(val)) > epsilon)
+        oss << std::fixed << std::setprecision(8) << val;
+    else
+        oss << std::noshowpoint << val;
+    return oss.str();
 }

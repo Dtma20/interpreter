@@ -1,0 +1,44 @@
+input_val: num = 1
+output_desire: num = 0
+
+input_weight: num = 0.5
+lr: num = 0.01
+
+func activation(sum: num) -> num {
+    if(sum >= 0){
+      	return 1
+    } else {
+      	return 0
+    }
+}
+
+print("Entrada: ", input_val, " Desejado: ", output_desire, "\n")
+
+error: num = 1000.0
+iteration: num = 0
+bias: num = 1
+bias_weight: num = 0.5
+
+while(error != 0) {
+    iteration = iteration + 1
+    print("### Iteração: ", iteration, "\n")
+    print("Peso: ", input_weight, "\n")
+
+    sum: num = (input_val * input_weight) + (bias * bias_weight)
+
+    print("Sum:", activation(sum), "\n")
+    output: num = activation(sum)
+    print("Saída: ", output, "\n")
+
+    error: num = output_desire - output
+    print("Erro: ", error, "\n")
+
+    if (error != 0) {
+		input_weight = input_weight + (lr * input_val * error)
+		print("Peso do bias: ", bias_weight, "\n")
+		bias_weight = bias_weight + (lr * bias * error)
+    }
+}
+
+print("A Rede de um Neurônio Aprendeu\n")
+print("Valor desejado: ", output_desire, "\n")

@@ -42,16 +42,7 @@ ValueWrapper Interpreter::builtin_print(Call *call)
                 oss << "[uninitialized]";
             }
             else if constexpr (std::is_same_v<T, long double>) {
-                constexpr long double epsilon = 1e-9;
-                std::ios_base::fmtflags originalFlags = oss.flags();
-                std::streamsize originalPrecision = oss.precision();
-                if (std::abs(val - std::trunc(val)) > epsilon) {
-                    oss << std::fixed << std::setprecision(8) << val;
-                } else {
-                    oss << std::noshowpoint << val;
-                }
-                oss.flags(originalFlags);
-                oss.precision(originalPrecision);
+                oss << format_number(val); // T21: formatação única, coerente com to_string()
             }
             else if constexpr (std::is_same_v<T, bool>) {
                 oss << (val ? "true" : "false");
@@ -153,9 +144,9 @@ ValueWrapper Interpreter::builtin_isnum(Call *call)
     if (std::holds_alternative<std::string>(arg.data))
     {
         std::string str = std::get<std::string>(arg.data);
-        bool result = std::all_of(str.begin(), str.end(),
-                                  [](unsigned char c)
-                                  { return std::isdigit(c); });
+        bool result = !str.empty() && std::all_of(str.begin(), str.end(),
+                                   [](unsigned char c)
+                                   { return std::isdigit(c); });
         LOG_DEBUG("Interpreter: isnum retornando: " << (result ? "true" : "false"));
         return ValueWrapper(result);
     }

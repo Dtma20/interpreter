@@ -1,0 +1,9 @@
+# T18: bool==bool, string+string, isnum("")
+a: bool = true
+b: bool = true
+if(a == b){ print(1) }
+if(a != b){ print(0) }
+c: string = "a"
+d: string = "b"
+print(c + d) # concatenação string+string
+print(isnum("")) # deve ser false

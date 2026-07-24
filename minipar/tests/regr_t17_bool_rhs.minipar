@@ -1,0 +1,11 @@
+# T17: RHS com expressão booleana sem parênteses
+x: num = 5
+b: bool = x > 0
+c: bool = x == 5
+print(b)
+print(c)
+d: bool = true
+print(d)
+e: bool = false
+e = x == 5
+print(e)
